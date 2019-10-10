@@ -1,0 +1,10 @@
+{
+  "version": "2.0",
+  "logging": {
+    "logLevel": {
+      "DedicatedHostsManager.DedicatedHostEngine": "Information",
+      "DedicatedHostsManager.DedicatedHostSelector": "Information",
+      "DedicatedHostsManager.SyncProvider": "Information"
+    }
+  }
+}

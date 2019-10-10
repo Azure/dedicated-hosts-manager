@@ -1,0 +1,143 @@
+[{
+        "properties.platformFaultDomain": 0,
+        "properties.autoReplaceOnFailure": true,
+        "properties.hostId": "55152f7a-9fec-4385-aec6-9b69003c6539",
+        "properties.virtualMachines": [],
+        "properties.licenseType": null,
+        "properties.provisioningTime": "2019-09-26T18:50:19.2055269Z",
+        "properties.provisioningState": "Succeeded",
+        "properties.instanceView": {
+            "assetId": "a6e31f91-0274-48cc-8b5e-f665430b3940",
+            "availableCapacity": {
+                "allocatableVMs": [{
+                    "vmSize": "Standard_D2s_v3",
+                    "count": 32.0
+                }, {
+                    "vmSize": "Standard_D4s_v3",
+                    "count": 16.0
+                }, {
+                    "vmSize": "Standard_D8s_v3",
+                    "count": 8.0
+                }, {
+                    "vmSize": "Standard_D16s_v3",
+                    "count": 4.0
+                }, {
+                    "vmSize": "Standard_D32-8s_v3",
+                    "count": 2.0
+                }, {
+                    "vmSize": "Standard_D32-16s_v3",
+                    "count": 2.0
+                }, {
+                    "vmSize": "Standard_D32s_v3",
+                    "count": 2.0
+                }, {
+                    "vmSize": "Standard_D48s_v3",
+                    "count": 1.0
+                }, {
+                    "vmSize": "Standard_D64-16s_v3",
+                    "count": 1.0
+                }, {
+                    "vmSize": "Standard_D64-32s_v3",
+                    "count": 1.0
+                }, {
+                    "vmSize": "Standard_D64s_v3",
+                    "count": 1.0
+                }]
+            },
+            "statuses": [{
+                "code": "ProvisioningState/succeeded",
+                "level": "Info",
+                "displayStatus": "Provisioning succeeded",
+                "message": null,
+                "time": "2019-09-26T18:53:19.2055269Z"
+            }, {
+                "code": "HealthState/available",
+                "level": "Info",
+                "displayStatus": "Host available",
+                "message": null,
+                "time": null
+            }]
+        },
+        "sku": {
+            "name": "DSv3-Type1",
+            "tier": null,
+            "capacity": null
+        },
+        "id": "/subscriptions/6e412d70-9128-48a7-97b4-04e5bd35cefc/resourceGroups/63296244-ce2c-46d8-bc36-3e558792fbee/providers/Microsoft.Compute/hostGroups/citrix-dhg/hosts/20887a6e-0866-4bae-82b7-880839d9e76b",
+        "name": "dh1",
+        "type": null,
+        "location": "usgovvirginia",
+        "tags": null
+    },
+    {
+        "properties.platformFaultDomain": 0,
+        "properties.autoReplaceOnFailure": true,
+        "properties.hostId": "23152f7a-9fec-4385-aec6-9b69003c6539",
+        "properties.virtualMachines": [],
+        "properties.licenseType": null,
+        "properties.provisioningTime": "2019-09-26T18:53:19.2055269Z",
+        "properties.provisioningState": "Succeeded",
+        "properties.instanceView": {
+            "assetId": "8fe31f91-0274-48cc-8b5e-f665430b3940",
+            "availableCapacity": {
+                "allocatableVMs": [{
+                    "vmSize": "Standard_D2s_v3",
+                    "count": 32.0
+                }, {
+                    "vmSize": "Standard_D4s_v3",
+                    "count": 16.0
+                }, {
+                    "vmSize": "Standard_D8s_v3",
+                    "count": 8.0
+                }, {
+                    "vmSize": "Standard_D16s_v3",
+                    "count": 4.0
+                }, {
+                    "vmSize": "Standard_D32-8s_v3",
+                    "count": 2.0
+                }, {
+                    "vmSize": "Standard_D32-16s_v3",
+                    "count": 2.0
+                }, {
+                    "vmSize": "Standard_D32s_v3",
+                    "count": 2.0
+                }, {
+                    "vmSize": "Standard_D48s_v3",
+                    "count": 1.0
+                }, {
+                    "vmSize": "Standard_D64-16s_v3",
+                    "count": 1.0
+                }, {
+                    "vmSize": "Standard_D64-32s_v3",
+                    "count": 1.0
+                }, {
+                    "vmSize": "Standard_D64s_v3",
+                    "count": 1.0
+                }]
+            },
+            "statuses": [{
+                "code": "ProvisioningState/succeeded",
+                "level": "Info",
+                "displayStatus": "Provisioning succeeded",
+                "message": null,
+                "time": "2019-09-26T18:53:19.2055269Z"
+            }, {
+                "code": "HealthState/available",
+                "level": "Info",
+                "displayStatus": "Host available",
+                "message": null,
+                "time": null
+            }]
+        },
+        "sku": {
+            "name": "DSv3-Type1",
+            "tier": null,
+            "capacity": null
+        },
+        "id": "/subscriptions/6e412d70-9128-48a7-97b4-04e5bd35cefc/resourceGroups/63296244-ce2c-46d8-bc36-3e558792fbee/providers/Microsoft.Compute/hostGroups/citrix-dhg/hosts/20887a6e-0866-4bae-82b7-880839d9e76b",
+        "name": "dh2",
+        "type": null,
+        "location": "usgovvirginia",
+        "tags": null
+    }
+]
