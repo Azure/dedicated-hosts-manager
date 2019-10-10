@@ -411,12 +411,12 @@ namespace DedicatedHostsManager
                 throw new ArgumentException(nameof(location));
             }
 
-            var matchingHost = string.Empty;
+            var matchingHostId = string.Empty;
             var innerLoopStopwatch = Stopwatch.StartNew();
 
-            while (string.IsNullOrEmpty(matchingHost))
+            while (string.IsNullOrEmpty(matchingHostId))
             {
-                matchingHost = await SelectHostFromHostGroup(
+                matchingHostId = await SelectHostFromHostGroup(
                     token, 
                     cloudName, 
                     tenantId, 
@@ -425,7 +425,7 @@ namespace DedicatedHostsManager
                     hostGroupName, 
                     requiredVmSize);
 
-                if (string.IsNullOrEmpty(matchingHost))
+                if (string.IsNullOrEmpty(matchingHostId))
                 {
                     var lockRetryCount = int.Parse(_configuration["LockRetryCount"]);
                     await Policy
@@ -441,7 +441,7 @@ namespace DedicatedHostsManager
                                 _logger.LogInformation($"About to lock");
                                 await _syncProvider.StartSerialRequests(_configuration["LockBlobName"]);
 
-                                matchingHost = await SelectHostFromHostGroup(
+                                matchingHostId = await SelectHostFromHostGroup(
                                     token,
                                     cloudName,
                                     tenantId,
@@ -450,7 +450,7 @@ namespace DedicatedHostsManager
                                     hostGroupName,
                                     requiredVmSize);
 
-                                if (string.IsNullOrEmpty(matchingHost))
+                                if (string.IsNullOrEmpty(matchingHostId))
                                 {
                                     _logger.LogInformation($"Creating a new host.");
                                     var vmToHostDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(_configuration["VmToHostMapping"]);
@@ -478,7 +478,7 @@ namespace DedicatedHostsManager
                                         hostSku,
                                         location);
 
-                                    matchingHost = newDedicatedHostResponse.Body.Id;
+                                    matchingHostId = newDedicatedHostResponse.Body.Id;
                                     _logger.LogMetric("DedicatedHostCreationCountMetric", 1);
                                 }
                             }
@@ -497,15 +497,15 @@ namespace DedicatedHostsManager
                 _logger.LogInformation($"Retry to find a host for {requiredVmSize}");
             }
 
-            if (string.IsNullOrEmpty(matchingHost))
+            if (string.IsNullOrEmpty(matchingHostId))
             {
                 _logger.LogError($"Something went really wrong! Could not find a " +
                                  $"matching host for {requiredVmSize} within {innerLoopStopwatch.Elapsed.TotalSeconds} seconds. ");
             }
 
             _logger.LogMetric("GetDedicatedHostTimeSecondsMetric", innerLoopStopwatch.Elapsed.TotalSeconds);
-            _logger.LogInformation($"Inner loop time: Found a matching host {matchingHost} for {vmName} of {requiredVmSize} SKU after {innerLoopStopwatch.Elapsed.TotalSeconds} seconds");
-            return matchingHost;
+            _logger.LogInformation($"GetDedicatedHost: Took {innerLoopStopwatch.Elapsed.TotalSeconds} seconds to find a matching host {matchingHostId} for {vmName} of {requiredVmSize} SKU.");
+            return matchingHostId;
         }
 
         private async Task<string> SelectHostFromHostGroup(
