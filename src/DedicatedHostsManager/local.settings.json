@@ -1,0 +1,9 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "75a85d76-eb69-fc68-8652-fb0c299f8b37"
+  },
+  //"VmToHostMapping": "{\"Standard_D2s_v3\":\"DSv3-Type1\",\"Standard_D4s_v3\":\"DSv3-Type1\",\"Standard_D8s_v3\":\"DSv3-Type1\",\"Standard_D16s_v3\":\"DSv3-Type1\",\"Standard_D32-8s_v3\":\"DSv3-Type1\",\"Standard_D32-16s_v3\":\"DSv3-Type1\",\"Standard_D32s_v3\":\"DSv3-Type1\",\"Standard_D48s_v3\":\"DSv3-Type1\",\"Standard_D64-16s_v3\":\"DSv3-Type1\",\"Standard_D64-32s_v3\":\"DSv3-Type1\",\"Standard_D64s_v3\":\"DSv3-Type1\",\"Standard_E2s_v3\":\"ESv3-Type1\",\"Standard_E4s_v3\":\"ESv3-Type1\",\"Standard_E8s_v3\":\"ESv3-Type1\",\"Standard_E16s_v3\":\"ESv3-Type1\",\"Standard_E32-8s_v3\":\"ESv3-Type1\",\"Standard_E32-16s_v3\":\"ESv3-Type1\",\"Standard_E32s_v3\":\"ESv3-Type1\",\"Standard_E48s_v3\":\"ESv3-Type1\",\"Standard_E64-16s_v3\":\"ESv3-Type1\",\"Standard_E64-32s_v3\":\"ESv3-Type1\",\"Standard_E64s_v3\":\"ESv3-Type1\",\"Standard_F2s_v3\":\"FSv2-Type2\",\"Standard_F4s_v3\":\"FSv2-Type2\",\"Standard_F8s_v3\":\"FSv2-Type2\",\"Standard_F16s_v3\":\"FSv2-Type2\",\"Standard_F32-8s_v3\":\"FSv2-Type2\",\"Standard_F32-16s_v3\":\"FSv2-Type2\",\"Standard_F32s_v3\":\"FSv2-Type2\",\"Standard_F48s_v3\":\"FSv2-Type2\",\"Standard_F64-16s_v3\":\"FSv2-Type2\",\"Standard_F64-32s_v3\":\"FSv2-Type2\",\"Standard_F64s_v3\":\"FSv2-Type2\"}"
+ }
