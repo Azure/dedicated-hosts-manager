@@ -26,7 +26,6 @@ namespace DedicatedHostsTrafficGenerator
         {
             var config = new ConfigurationBuilder()
              .SetBasePath(Directory.GetCurrentDirectory())
-             //.AddJsonFile("appsettings.json", true, false)
              .AddUserSecrets<Program>()
              .Build();
 
@@ -82,33 +81,11 @@ namespace DedicatedHostsTrafficGenerator
                 "citrix-dhg",
                 newDedicatedHostGroup);
 
-            var dhInfo = await computeManagementClient.DedicatedHosts.GetAsync("mdewan-citrix-test7", "citrix-dhg", "host-452",
-                InstanceViewTypes.InstanceView);
-
-            #region debugging
-            //for (int i = 14; i < 16; i++)
-            //{
-            //    var stopwatch = Stopwatch.StartNew();
-            //    await computeManagementClient.DedicatedHosts.CreateOrUpdateAsync(
-            //        resourceGroupName,
-            //        "citrix-dhg",
-            //        "test" + i,
-            //        new DedicatedHost
-            //        {
-            //            Location = location,
-            //            Sku = new Sku() { Name = "DSv3-Type1" }
-            //        });
-            //    Console.WriteLine($"DH create for {"test" + i} took {stopwatch.Elapsed.TotalSeconds} seconds.");
-            //}
-            #endregion
-
             var taskList = new List<Task<HttpResponseMessage>>();
             var inputDictionary = new Dictionary<string, StringContent>();
             for (var i = 0; i < numVirtualMachines; i++)
             {
                 var vmName = $"vm{i}-{new Random().Next(1,10000)}";
-                // TODO: auto generate/populate VM Name, RG, and VM Size
-                //
                 var virtualMachine = CreateVmHelper.CreateVirtualMachine(
                     computeManagementClient,
                     azure,
@@ -121,20 +98,6 @@ namespace DedicatedHostsTrafficGenerator
                     "adh-poc-vnet",
                     "nic-" + Guid.NewGuid());
 
-#if DEBUG   
-                var createVmUri =
-                $"http://localhost:7071/api/CreateVm" +
-                $"?token={token}" +
-                $"&cloudName=AzureUSGovernment" +
-                $"&tenantId={tenantId}" +
-                $"&subscriptionId={subscriptionId}" +
-                $"&resourceGroup={resourceGroupName}" +
-                $"&location={location}" +
-                $"&vmSku={virtualMachineSize}" +
-                $"&vmName={vmName}" +
-                $"&platformFaultDomainCount=1";
-#else
-
                 var createVmUri =
                     $"https://adh.azurewebsites.us/api/CreateVm?code=a7xadlDU/qH/7R1w5mza4lwTbZnLBZf6uSFBCh31URy2tg3WIEDr3A==" +
                     $"&token={token}" +
@@ -146,7 +109,6 @@ namespace DedicatedHostsTrafficGenerator
                     $"&vmSku={virtualMachineSize}" +
                     $"&vmName={vmName}" +
                     $"&platformFaultDomainCount=1";
-#endif
 
                 var httpContent = new StringContent(JsonConvert.SerializeObject(virtualMachine), Encoding.UTF8, "application/json");
                 inputDictionary[createVmUri] = httpContent;                

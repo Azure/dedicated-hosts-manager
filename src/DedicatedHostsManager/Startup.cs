@@ -1,4 +1,8 @@
-﻿using Microsoft.ApplicationInsights.AspNetCore;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using DedicatedHostsManager;
+using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation.ApplicationId;
@@ -9,13 +13,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using DedicatedHostsManager;
 
-[assembly: FunctionsStartup(typeof(DedicatedHosts.Startup))]
-namespace DedicatedHosts
+[assembly: FunctionsStartup(typeof(Startup))]
+namespace DedicatedHostsManager
 {
     internal class Startup : FunctionsStartup
     {

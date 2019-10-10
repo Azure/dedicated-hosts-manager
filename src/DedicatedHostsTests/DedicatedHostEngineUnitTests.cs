@@ -1,4 +1,4 @@
-using DedicatedHosts;
+using DedicatedHostsManager;
 using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
@@ -11,7 +11,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using DedicatedHostsManager;
 using Xunit;
 using DedicatedHostGroup = Microsoft.Azure.Management.Compute.Models.DedicatedHostGroup;
 

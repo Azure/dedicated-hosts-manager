@@ -1,8 +1,8 @@
-﻿using Microsoft.Azure.Management.Compute.Models;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.Management.Compute.Models;
 
-namespace DedicatedHosts
+namespace DedicatedHostsManager
 {
     public interface IDedicatedHostSelector
     {

@@ -4,8 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using DedicatedHosts;
-using DedicatedHosts.Helpers;
+using DedicatedHostsManager.Helpers;
 using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
@@ -104,12 +103,13 @@ namespace DedicatedHostsManager
                 newDedicatedHostGroup.Zones = new List<string>{ azName };
             }
 
+            var dhgCreateRetryCount = int.Parse(_configuration["DhgCreateRetryCount"]);
             var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
             var response = new AzureOperationResponse<DedicatedHostGroup>();
             await Policy
                 .Handle<CloudException>()
                 .WaitAndRetryAsync(
-                    7, // TODO - read from config
+                    dhgCreateRetryCount,
                     r => TimeSpan.FromSeconds(2 * r),
                     (ex, ts, r) =>
                         _logger.LogInformation(
@@ -290,7 +290,7 @@ namespace DedicatedHostsManager
             var retryCountToCheckVmState = int.Parse(_configuration["RetryCountToCheckVmState"]);
 
             // TODO: time box VM creation
-            // TODO: below logic will be modified once the DH get details API is fixed
+            // TODO: below logic will be modified once the Compute DH API is fixed
             while (string.IsNullOrEmpty(vmProvisioningState)
                    || !string.Equals(vmProvisioningState, "Succeeded", StringComparison.InvariantCultureIgnoreCase))
             {
@@ -416,7 +416,6 @@ namespace DedicatedHostsManager
 
             while (string.IsNullOrEmpty(matchingHost))
             {
-                // check
                 matchingHost = await SelectHostFromHostGroup(
                     token, 
                     cloudName, 
@@ -428,7 +427,6 @@ namespace DedicatedHostsManager
 
                 if (string.IsNullOrEmpty(matchingHost))
                 {
-                    // lock 
                     var lockRetryCount = int.Parse(_configuration["LockRetryCount"]);
                     await Policy
                         .Handle<StorageException>()
@@ -443,7 +441,6 @@ namespace DedicatedHostsManager
                                 _logger.LogInformation($"About to lock");
                                 await _syncProvider.StartSerialRequests(_configuration["LockBlobName"]);
 
-                                // check
                                 matchingHost = await SelectHostFromHostGroup(
                                     token,
                                     cloudName,
@@ -453,7 +450,6 @@ namespace DedicatedHostsManager
                                     hostGroupName,
                                     requiredVmSize);
 
-                                // create a host, if needed
                                 if (string.IsNullOrEmpty(matchingHost))
                                 {
                                     _logger.LogInformation($"Creating a new host.");
@@ -471,7 +467,6 @@ namespace DedicatedHostsManager
                                             $"Cannot find a dedicated host SKU for the {requiredVmSize}: vm to host mapping was null.");
                                     }
 
-                                    // TODO: take host SKU as an input parameter; means to delegate vm/host sku selection responsibility to client
                                     var newDedicatedHostResponse = await CreateDedicatedHost(
                                         token,
                                         cloudName,
@@ -493,7 +488,6 @@ namespace DedicatedHostsManager
                             }
                             finally
                             {
-                                // unlock
                                 _logger.LogInformation($"Releasing the lock");
                                 await _syncProvider.EndSerialRequests(_configuration["LockBlobName"]);
                             }
@@ -580,7 +574,6 @@ namespace DedicatedHostsManager
 
             var nextLink = dedicatedHostResponse.NextPageLink;
 
-            // TODO: fortify?
             while (!string.IsNullOrEmpty(nextLink))
             {
                 dedicatedHostResponse = await computeManagementClient.DedicatedHosts.ListByHostGroupNextAsync(nextLink);

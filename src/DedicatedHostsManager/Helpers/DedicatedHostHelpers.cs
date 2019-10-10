@@ -2,7 +2,7 @@
 using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 
-namespace DedicatedHosts.Helpers
+namespace DedicatedHostsManager.Helpers
 {
     public static class DedicatedHostHelpers
     {

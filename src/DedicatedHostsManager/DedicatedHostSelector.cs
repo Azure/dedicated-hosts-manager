@@ -1,18 +1,18 @@
-﻿using DedicatedHosts.Helpers;
-using Microsoft.Azure.Management.Compute;
-using Microsoft.Azure.Management.Compute.Models;
-using Microsoft.Azure.Management.ResourceManager.Fluent;
-using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
-using Microsoft.Rest;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using DedicatedHostsManager.Helpers;
+using Microsoft.Azure.Management.Compute;
+using Microsoft.Azure.Management.Compute.Models;
+using Microsoft.Azure.Management.ResourceManager.Fluent;
+using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Extensions.Logging;
+using Microsoft.Rest;
 
-namespace DedicatedHosts
+namespace DedicatedHostsManager
 {
     public class DedicatedHostSelector : IDedicatedHostSelector
     {
@@ -89,18 +89,15 @@ namespace DedicatedHosts
                 }
             }
 
-            // TODO: put a policy to let users decide what sorting criteria to use
-            // TODO: refactor it into a different interface; user enum from config
-            //
-            if (matchingHosts.Any())
+            if (!matchingHosts.Any())
             {
-                // TODO: return based on how packed the hosts are, for now return a random host
-                //
-                var randomHost = new Random().Next(matchingHosts.Count);
-                return matchingHosts[randomHost].Id;
+                return null;
             }
 
-            return null;
+            // TODO: Refactor matching host selection logic to allow configurable/custom selection.
+            // TODO: Return based on how packed the hosts are, for now return a random host
+            var randomHost = new Random().Next(matchingHosts.Count);
+            return matchingHosts[randomHost].Id;
         }
 
         public async Task GetAllocatableVmsOnHost(

@@ -1,6 +1,6 @@
 ﻿using System.Threading.Tasks;
 
-namespace DedicatedHosts
+namespace DedicatedHostsManager
 {
     public interface ISyncProvider
     {

@@ -1,4 +1,4 @@
-﻿namespace DedicatedHosts
+﻿namespace DedicatedHostsManager
 {
     public static class Constants
     {

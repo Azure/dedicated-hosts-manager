@@ -1,10 +1,10 @@
-﻿using Microsoft.Azure.Management.Compute.Models;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Rest.Azure;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
-namespace DedicatedHosts
+namespace DedicatedHostsManager
 {
     public interface IDedicatedHostEngine
     {

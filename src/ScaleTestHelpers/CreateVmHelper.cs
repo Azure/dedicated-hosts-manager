@@ -51,7 +51,7 @@ namespace ScaleTestHelpers
                 throw new ArgumentException(nameof(vmSize));
             }
 
-            // Note: don't block no zone availability
+            // Note: don't block on zone availability
             //
             //if (string.IsNullOrEmpty(availabilityZone))
             //{
@@ -79,7 +79,7 @@ namespace ScaleTestHelpers
                 .Create();
 
             Console.WriteLine($"Creating public IP address {pipName}");
-            var publicIPAddress = azure.PublicIPAddresses.Define(pipName)
+            var publicIpAddress = azure.PublicIPAddresses.Define(pipName)
                 .WithRegion(region)
                 .WithExistingResourceGroup(resourceGroupName)
                 .WithDynamicIP()
@@ -100,7 +100,7 @@ namespace ScaleTestHelpers
                 .WithExistingPrimaryNetwork(network)
                 .WithSubnet("adhSubnet")
                 .WithPrimaryPrivateIPAddressDynamic()
-                .WithExistingPrimaryPublicIPAddress(publicIPAddress)
+                .WithExistingPrimaryPublicIPAddress(publicIpAddress)
                 .Create();
 
             Console.WriteLine($"Configuring virtual machine {vmName}" + Environment.NewLine);
@@ -163,7 +163,7 @@ namespace ScaleTestHelpers
                 null,
                 null,
                 null,
-                null);  // TODO: if zonal support needed, new List<string> { availabilityZone });                
+                null);  
         }
     }
 }

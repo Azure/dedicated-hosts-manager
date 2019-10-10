@@ -1,18 +1,17 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace DedicatedHosts
+namespace DedicatedHostsManager
 {
     public class SyncProvider : ISyncProvider
     {
         private readonly IConfiguration _configuration;
         private readonly ILogger<SyncProvider> _logger;
         private readonly CloudBlobContainer _cloudBlobContainer;
-        private readonly CloudBlobClient _blobClient;
         private string _lease;
 
         public SyncProvider(IConfiguration configuration, ILogger<SyncProvider> logger)
@@ -20,8 +19,8 @@ namespace DedicatedHosts
             _configuration = configuration;
             _logger = logger;
             var storageAccount = CloudStorageAccount.Parse(_configuration.GetConnectionString("StorageConnectionString"));
-            _blobClient = storageAccount.CreateCloudBlobClient();
-            _cloudBlobContainer = _blobClient.GetContainerReference(_configuration["LockContainerName"]);
+            var blobClient = storageAccount.CreateCloudBlobClient();
+            _cloudBlobContainer = blobClient.GetContainerReference(_configuration["LockContainerName"]);
         }
 
         public async Task StartSerialRequests(string blobName)

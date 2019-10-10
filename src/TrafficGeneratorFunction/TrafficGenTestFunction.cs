@@ -18,7 +18,6 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
-using ScaleTestHelpers;
 
 namespace TrafficGeneratorFunction
 {
@@ -138,20 +137,6 @@ namespace TrafficGeneratorFunction
                     "adh-poc-vnet",
                     "nic-" + Guid.NewGuid());
 
-//#if DEBUG   
-//                var createVmUri =
-//                $"http://localhost:7071/api/CreateVm" +
-//                $"?token={token}" +
-//                $"&cloudName=AzureUSGovernment" +
-//                $"&tenantId={tenantId}" +
-//                $"&subscriptionId={subscriptionId}" +
-//                $"&resourceGroup={resourceGroupName}" +
-//                $"&location={location}" +
-//                $"&vmSku={virtualMachineSize}" +
-//                $"&vmName={vmName}" +
-//                $"&platformFaultDomainCount=1";
-//#else
-
                 var createVmUri =
                     $"https://adh.azurewebsites.us/api/CreateVm?code=a7xadlDU/qH/7R1w5mza4lwTbZnLBZf6uSFBCh31URy2tg3WIEDr3A==" +
                     $"&token={token}" +
@@ -163,7 +148,6 @@ namespace TrafficGeneratorFunction
                     $"&vmSku={virtualMachineSize}" +
                     $"&vmName={vmName}" +
                     $"&platformFaultDomainCount=1";
-//#endif
 
                 var httpContent = new StringContent(JsonConvert.SerializeObject(virtualMachine), Encoding.UTF8, "application/json");
                 inputDictionary[createVmUri] = httpContent;
@@ -175,36 +159,6 @@ namespace TrafficGeneratorFunction
             }
             
             return new OkObjectResult($"VM provisioning kicked off successfully for {numVirtualMachines} VMs - exiting.");
-
-            //var results = await Task.WhenAll(taskList);
-            //var outputDictionary = new Dictionary<string, string>();
-            //foreach (var result in results)
-            //{
-            //    outputDictionary[result.RequestMessage.RequestUri.ToString()] =
-            //        await result.Content.ReadAsStringAsync();
-            //}
-
-            //// list all virtual machines in a RG
-            //var vmList = new List<VirtualMachine>();
-            //var vmListResponse = await computeManagementClient.VirtualMachines.ListAllAsync();
-            //vmList.AddRange(vmListResponse.ToList());
-            //var nextLink = vmListResponse.NextPageLink;
-
-            //// TODO: fortify?
-            //while (!string.IsNullOrEmpty(nextLink))
-            //{
-            //    vmListResponse = await computeManagementClient.VirtualMachines.ListAllNextAsync(nextLink);
-            //    vmList.AddRange(vmListResponse.ToList());
-            //    nextLink = vmListResponse.NextPageLink;
-            //}
-
-            //var vmGroups = vmList.GroupBy(v => v.ProvisioningState);
-            //foreach (var v in vmGroups)
-            //{
-            //    log.LogInformation($"Provisioning state: {v.Key}, VM Count: {v.Count()}");
-            //}
-
-            //return new OkObjectResult("VM allocation triggered, no errors");
         }
     }
 }
