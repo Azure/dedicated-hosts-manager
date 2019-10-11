@@ -7,6 +7,9 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace DedicatedHostsManager
 {
+    /// <summary>
+    /// 
+    /// </summary>
     public class SyncProvider : ISyncProvider
     {
         private readonly IConfiguration _configuration;

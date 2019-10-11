@@ -19,8 +19,12 @@ using Newtonsoft.Json;
 using Polly;
 using SubResource = Microsoft.Azure.Management.Compute.Models.SubResource;
 
+///
 namespace DedicatedHostsManager
 {
+    /// <summary>
+    /// 
+    /// </summary>
     public class DedicatedHostEngine : IDedicatedHostEngine
     {
         private readonly ILogger<DedicatedHostEngine> _logger;
