@@ -7,9 +7,6 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace DedicatedHostsManager
 {
-    /// <summary>
-    /// 
-    /// </summary>
     public class SyncProvider : ISyncProvider
     {
         private readonly IConfiguration _configuration;
@@ -30,6 +27,11 @@ namespace DedicatedHostsManager
         {
             await _cloudBlobContainer.CreateIfNotExistsAsync();
             var blockBlob = _cloudBlobContainer.GetBlockBlobReference(blobName);
+            if (!await blockBlob.ExistsAsync())
+            {
+                await blockBlob.UploadTextAsync(blobName);
+            }
+
             var lockIntervalInSeconds = int.Parse(_configuration["LockIntervalInSeconds"]);
             _lease = await blockBlob.AcquireLeaseAsync(TimeSpan.FromSeconds(lockIntervalInSeconds), null);
             _logger.LogInformation($"Acquired lock for {blockBlob}");

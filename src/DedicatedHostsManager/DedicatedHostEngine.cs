@@ -31,17 +31,20 @@ namespace DedicatedHostsManager
         private readonly IConfiguration _configuration;
         private readonly IDedicatedHostSelector _dedicatedHostSelector;
         private readonly ISyncProvider _syncProvider;
+        private readonly ICacheProvider _cacheProvider;
 
         public DedicatedHostEngine(
             ILogger<DedicatedHostEngine> logger, 
             IConfiguration configuration,
             IDedicatedHostSelector dedicatedHostSelector,
-            ISyncProvider syncProvider)
+            ISyncProvider syncProvider,
+            ICacheProvider cacheProvider)
         {
             _logger = logger;
             _configuration = configuration;
             _dedicatedHostSelector = dedicatedHostSelector;
             _syncProvider = syncProvider;
+            _cacheProvider = cacheProvider;
         }
 
         public async Task<AzureOperationResponse<DedicatedHostGroup>> CreateDedicatedHostGroup(
@@ -326,6 +329,7 @@ namespace DedicatedHostsManager
                 if (string.Equals(vmProvisioningState, "Failed", StringComparison.InvariantCultureIgnoreCase))
                 {
                     _logger.LogMetric("VmProvisioningFailureCountMetric", 1);
+                    _cacheProvider.AddData(virtualMachine.Host.Id, DateTimeOffset.Now.ToString());
                     var dedicatedHostId = await GetDedicatedHostForVmPlacement(
                         token,
                         cloudName,
@@ -444,10 +448,17 @@ namespace DedicatedHostsManager
                     hostGroupName, 
                     requiredVmSize);
 
-                if (string.IsNullOrEmpty(matchingHostId)
-                    || (!string.IsNullOrEmpty(oldHostId) && string.Equals(matchingHostId, oldHostId, StringComparison.InvariantCultureIgnoreCase)))
+                if (string.IsNullOrEmpty(matchingHostId))
                 {
                     var lockRetryCount = int.Parse(_configuration["LockRetryCount"]);
+                    var hostGroupId = await GetDedicatedHostGroupId(
+                        token,
+                        cloudName,
+                        tenantId,
+                        subscriptionId,
+                        resourceGroup,
+                        hostGroupName);
+
                     await Policy
                         .Handle<StorageException>()
                         .WaitAndRetryAsync(
@@ -459,7 +470,7 @@ namespace DedicatedHostsManager
                             try
                             {
                                 _logger.LogInformation($"About to lock");
-                                await _syncProvider.StartSerialRequests(_configuration["LockBlobName"]);
+                                await _syncProvider.StartSerialRequests(hostGroupId);
 
                                 matchingHostId = await SelectHostFromHostGroup(
                                     token,
@@ -470,8 +481,7 @@ namespace DedicatedHostsManager
                                     hostGroupName,
                                     requiredVmSize);
 
-                                if (string.IsNullOrEmpty(matchingHostId) 
-                                    || (!string.IsNullOrEmpty(oldHostId) && string.Equals(matchingHostId, oldHostId, StringComparison.InvariantCultureIgnoreCase)))
+                                if (string.IsNullOrEmpty(matchingHostId))
                                 {
                                     _logger.LogInformation($"Creating a new host.");
                                     var vmToHostDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(_configuration["VmToHostMapping"]);
@@ -510,12 +520,12 @@ namespace DedicatedHostsManager
                             finally
                             {
                                 _logger.LogInformation($"Releasing the lock");
-                                await _syncProvider.EndSerialRequests(_configuration["LockBlobName"]);
+                                await _syncProvider.EndSerialRequests(hostGroupId);
                             }
                         });
                 }
 
-                _logger.LogInformation($"Retry to find a host for {requiredVmSize}");
+                _logger.LogInformation($"Retry to find a host for {vmName} of SKU {requiredVmSize}");
             }
 
             if (string.IsNullOrEmpty(matchingHostId))
@@ -527,6 +537,24 @@ namespace DedicatedHostsManager
             _logger.LogMetric("GetDedicatedHostTimeSecondsMetric", innerLoopStopwatch.Elapsed.TotalSeconds);
             _logger.LogInformation($"GetDedicatedHost: Took {innerLoopStopwatch.Elapsed.TotalSeconds} seconds to find a matching host {matchingHostId} for {vmName} of {requiredVmSize} SKU.");
             return matchingHostId;
+        }
+
+        private async Task<string> GetDedicatedHostGroupId(
+            string token,
+            string cloudName,
+            string tenantId,
+            string subscriptionId,
+            string resourceGroupName, 
+            string hostGroupName)
+        {
+            var azureCredentials = new AzureCredentials(
+                new TokenCredentials(token),
+                new TokenCredentials(token),
+                tenantId,
+                AzureEnvironment.FromName(cloudName));
+
+            var computeManagementClient = DedicatedHostHelpers.ComputeManagementClient(subscriptionId, azureCredentials);
+            return (await computeManagementClient.DedicatedHostGroups.GetAsync(resourceGroupName, hostGroupName)).Id;
         }
 
         private async Task<string> SelectHostFromHostGroup(
@@ -545,6 +573,8 @@ namespace DedicatedHostsManager
                 subscriptionId,
                 resourceGroup,
                 hostGroupName);
+
+            //dedicatedHostList.Select(h => )
 
             var matchingHost = await _dedicatedHostSelector.SelectDedicatedHost(
                 token,

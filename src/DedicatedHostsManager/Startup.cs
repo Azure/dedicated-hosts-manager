@@ -70,6 +70,7 @@ namespace DedicatedHostsManager
             builder.Services.AddTransient<IDedicatedHostEngine, DedicatedHostEngine>();
             builder.Services.AddTransient<IDedicatedHostSelector, DedicatedHostSelector>();
             builder.Services.AddTransient<ISyncProvider, SyncProvider>();
+            builder.Services.AddTransient<ICacheProvider, CacheProvider>();
         }
     }
 }
