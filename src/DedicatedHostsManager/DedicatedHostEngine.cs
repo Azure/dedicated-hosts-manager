@@ -292,15 +292,14 @@ namespace DedicatedHostsManager
             var minIntervalToCheckForVmInSeconds = int.Parse(_configuration["MinIntervalToCheckForVmInSeconds"]);
             var maxIntervalToCheckForVmInSeconds = int.Parse(_configuration["MaxIntervalToCheckForVmInSeconds"]);
             var retryCountToCheckVmState = int.Parse(_configuration["RetryCountToCheckVmState"]);
-
-            // TODO: time box VM creation
-            // TODO: below logic will be modified once the Compute DH API is fixed
-            while (string.IsNullOrEmpty(vmProvisioningState)
+            var maxRetriesToCreateVm = int.Parse(_configuration["MaxRetriesToCreateVm"]);
+            var vmCreationRetryCount = 0;
+            
+            while ((string.IsNullOrEmpty(vmProvisioningState)
                    || !string.Equals(vmProvisioningState, "Succeeded", StringComparison.InvariantCultureIgnoreCase))
-            {
-                if (!string.Equals(vmProvisioningState, "Creating", StringComparison.InvariantCultureIgnoreCase)
-                    && !string.Equals(vmProvisioningState, "Updating", StringComparison.InvariantCultureIgnoreCase)
-                    && !string.Equals(vmProvisioningState, "Deleting", StringComparison.InvariantCultureIgnoreCase))
+                   && vmCreationRetryCount < maxRetriesToCreateVm)
+            {             
+                if (string.IsNullOrEmpty(vmProvisioningState))
                 {
                     var dedicatedHostId = await GetDedicatedHostForVmPlacement(
                         token,
@@ -321,12 +320,37 @@ namespace DedicatedHostsManager
                             virtualMachine,
                             null);
                 }
-                else
+
+                // TODO: Remove below if block once the Compute DH bug is fixed.
+                // TODO: Intentional code duplication below to keep logic related to this bug separate.
+                if (string.Equals(vmProvisioningState, "Failed", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    // VM provisioning takes a few seconds
-                    await Task.Delay(TimeSpan.FromSeconds(new Random().Next(minIntervalToCheckForVmInSeconds, maxIntervalToCheckForVmInSeconds)));
+                    _logger.LogMetric("VmProvisioningFailureCountMetric", 1);
+                    var dedicatedHostId = await GetDedicatedHostForVmPlacement(
+                        token,
+                        cloudName,
+                        tenantId,
+                        subscriptionId,
+                        resourceGroup,
+                        dhgName,
+                        vmSku,
+                        vmName,
+                        region.Name,
+                        virtualMachine.Host.Id);
+
+                    await computeManagementClient.VirtualMachines.DeallocateAsync(resourceGroup, virtualMachine.Name);
+                    virtualMachine.Host = new SubResource(dedicatedHostId);
+                    response = await computeManagementClient.VirtualMachines
+                        .BeginCreateOrUpdateWithHttpMessagesAsync(
+                            resourceGroup,
+                            vmName,
+                            virtualMachine,
+                            null);
+                    await computeManagementClient.VirtualMachines.StartAsync(resourceGroup, virtualMachine.Name);
                 }
 
+                // VM provisioning takes a few seconds, wait for provisioning state to update
+                await Task.Delay(TimeSpan.FromSeconds(new Random().Next(minIntervalToCheckForVmInSeconds, maxIntervalToCheckForVmInSeconds)));
                 await Policy
                     .Handle<CloudException>()
                     .WaitAndRetryAsync(
@@ -342,18 +366,8 @@ namespace DedicatedHostsManager
                             .ProvisioningState;
                     });
 
-                vmProvisioningState =
-                    (await computeManagementClient.VirtualMachines.GetAsync(resourceGroup, virtualMachine.Name))
-                    .ProvisioningState;
-
                 _logger.LogInformation($"Provisioning state for {virtualMachine.Name} is {vmProvisioningState}");
-
-                if (string.Equals(vmProvisioningState, "Failed", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    await computeManagementClient.VirtualMachines.DeleteAsync(resourceGroup, virtualMachine.Name);
-                    _logger.LogInformation($"Deleting {virtualMachine.Name}, and retrying...");
-                    _logger.LogMetric("VmProvisioningFailureCountMetric", 1);
-                }
+                vmCreationRetryCount++;
             }
 
             return response;
@@ -368,7 +382,8 @@ namespace DedicatedHostsManager
             string hostGroupName,
             string requiredVmSize,
             string vmName,
-            string location)
+            string location,
+            string oldHostId = null)
         {
             if (string.IsNullOrEmpty(token))
             {
@@ -429,7 +444,8 @@ namespace DedicatedHostsManager
                     hostGroupName, 
                     requiredVmSize);
 
-                if (string.IsNullOrEmpty(matchingHostId))
+                if (string.IsNullOrEmpty(matchingHostId)
+                    || (!string.IsNullOrEmpty(oldHostId) && string.Equals(matchingHostId, oldHostId, StringComparison.InvariantCultureIgnoreCase)))
                 {
                     var lockRetryCount = int.Parse(_configuration["LockRetryCount"]);
                     await Policy
@@ -454,7 +470,8 @@ namespace DedicatedHostsManager
                                     hostGroupName,
                                     requiredVmSize);
 
-                                if (string.IsNullOrEmpty(matchingHostId))
+                                if (string.IsNullOrEmpty(matchingHostId) 
+                                    || (!string.IsNullOrEmpty(oldHostId) && string.Equals(matchingHostId, oldHostId, StringComparison.InvariantCultureIgnoreCase)))
                                 {
                                     _logger.LogInformation($"Creating a new host.");
                                     var vmToHostDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(_configuration["VmToHostMapping"]);
