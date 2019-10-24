@@ -51,8 +51,7 @@ namespace DedicatedHostsManager
             string hostGroupName,
             string requiredVmSize,
             string vmName,
-            string location,
-            string oldHostId);
+            string location);
 
         Task<IList<DedicatedHost>> ListDedicatedHosts(
             string token,

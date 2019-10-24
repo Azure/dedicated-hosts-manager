@@ -329,7 +329,8 @@ namespace DedicatedHostsManager
                 if (string.Equals(vmProvisioningState, "Failed", StringComparison.InvariantCultureIgnoreCase))
                 {
                     _logger.LogMetric("VmProvisioningFailureCountMetric", 1);
-                    _cacheProvider.AddData(virtualMachine.Host.Id, DateTimeOffset.Now.ToString());
+                    //var hostName = virtualMachine.Host.Id.Split(new[] {'/'}).Last();
+                    _cacheProvider.AddData(virtualMachine.Host.Id.ToLower(), DateTimeOffset.Now.ToString(), TimeSpan.FromMinutes(5));
                     var dedicatedHostId = await GetDedicatedHostForVmPlacement(
                         token,
                         cloudName,
@@ -339,8 +340,7 @@ namespace DedicatedHostsManager
                         dhgName,
                         vmSku,
                         vmName,
-                        region.Name,
-                        virtualMachine.Host.Id);
+                        region.Name);
 
                     await computeManagementClient.VirtualMachines.DeallocateAsync(resourceGroup, virtualMachine.Name);
                     virtualMachine.Host = new SubResource(dedicatedHostId);
@@ -386,8 +386,7 @@ namespace DedicatedHostsManager
             string hostGroupName,
             string requiredVmSize,
             string vmName,
-            string location,
-            string oldHostId = null)
+            string location)
         {
             if (string.IsNullOrEmpty(token))
             {
@@ -573,10 +572,13 @@ namespace DedicatedHostsManager
                 subscriptionId,
                 resourceGroup,
                 hostGroupName);
+            var prunedDedicatedHostList = dedicatedHostList.Where(h => !_cacheProvider.KeyExists(h.Id.ToLower())).ToList();
+            if (!prunedDedicatedHostList.Any())
+            {
+                return null;
+            }
 
-            //dedicatedHostList.Select(h => )
-
-            var matchingHost = await _dedicatedHostSelector.SelectDedicatedHost(
+            return await _dedicatedHostSelector.SelectDedicatedHost(
                 token,
                 cloudName,
                 tenantId,
@@ -584,9 +586,7 @@ namespace DedicatedHostsManager
                 resourceGroup,
                 hostGroupName,
                 requiredVmSize,
-                dedicatedHostList);
-
-            return matchingHost;
+                prunedDedicatedHostList);
         }
 
         public async Task<IList<DedicatedHost>> ListDedicatedHosts(

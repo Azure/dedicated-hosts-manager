@@ -16,12 +16,12 @@ namespace DedicatedHostsManager
         private readonly string _redisCacheConnection;
         private ConnectionMultiplexer _connectionMultiplexer;
 
-        public CacheProvider(IConfiguration configuration, ILogger<CacheProvider> logger, int dbi = 0)
+        public CacheProvider(IConfiguration configuration, ILogger<CacheProvider> logger)
         {
             _configuration = configuration;
             _logger = logger;
             _redisCacheConnection = _configuration.GetConnectionString("RedisConnectionString");
-            _defaultDbIndex = dbi;
+            _defaultDbIndex = 0;
         }
        
         public ConnectionMultiplexer ConnectionMultiplexer
