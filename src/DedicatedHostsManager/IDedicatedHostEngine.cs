@@ -30,7 +30,7 @@ namespace DedicatedHostsManager
             string dhSku,
             string location);
 
-        Task<AzureOperationResponse<VirtualMachine>> CreateVmOnDedicatedHost(
+        Task<VirtualMachine> CreateVmOnDedicatedHost(
             string token,
             string cloudName,
             string tenantId,

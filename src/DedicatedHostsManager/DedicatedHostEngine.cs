@@ -19,12 +19,8 @@ using Newtonsoft.Json;
 using Polly;
 using SubResource = Microsoft.Azure.Management.Compute.Models.SubResource;
 
-///
 namespace DedicatedHostsManager
 {
-    /// <summary>
-    /// 
-    /// </summary>
     public class DedicatedHostEngine : IDedicatedHostEngine
     {
         private readonly ILogger<DedicatedHostEngine> _logger;
@@ -196,7 +192,7 @@ namespace DedicatedHostsManager
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = DedicatedHostHelpers.ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
             if (await computeManagementClient.DedicatedHostGroups.GetAsync(resourceGroup, dhgName) == null)
             {
                 await computeManagementClient.DedicatedHostGroups.CreateOrUpdateAsync(
@@ -221,7 +217,7 @@ namespace DedicatedHostsManager
                 null);
         }
 
-        public async Task<AzureOperationResponse<VirtualMachine>> CreateVmOnDedicatedHost(
+        public async Task<VirtualMachine> CreateVmOnDedicatedHost(
             string token,
             string cloudName,
             string tenantId,
@@ -289,8 +285,8 @@ namespace DedicatedHostsManager
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = DedicatedHostHelpers.ComputeManagementClient(subscriptionId, azureCredentials);
-            var response = new AzureOperationResponse<VirtualMachine>();
+            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
+            VirtualMachine response = null;
             var vmProvisioningState = virtualMachine.ProvisioningState;
             var minIntervalToCheckForVmInSeconds = int.Parse(_configuration["MinIntervalToCheckForVmInSeconds"]);
             var maxIntervalToCheckForVmInSeconds = int.Parse(_configuration["MaxIntervalToCheckForVmInSeconds"]);
@@ -316,21 +312,29 @@ namespace DedicatedHostsManager
                         region.Name);
 
                     virtualMachine.Host = new SubResource(dedicatedHostId);
-                    response = await computeManagementClient.VirtualMachines
-                        .BeginCreateOrUpdateWithHttpMessagesAsync(
-                            resourceGroup,
-                            vmName,
-                            virtualMachine,
-                            null);
+                    try
+                    {
+                        response = await computeManagementClient.VirtualMachines
+                            .CreateOrUpdateAsync(
+                                resourceGroup,
+                                vmName,
+                                virtualMachine);
+                    }
+                    catch (CloudException cloudException)
+                    {
+                        if (cloudException.Message.Contains("Please ensure that the dedicated host has enough capacity", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            vmProvisioningState = "Failed";
+                        }
+                    }
                 }
 
-                // TODO: Remove below if block once the Compute DH bug is fixed.
+                // TODO: Remove below if block once the Compute DH stops provisioning VMs in F state when capacity bound.
                 // TODO: Intentional code duplication below to keep logic related to this bug separate.
                 if (string.Equals(vmProvisioningState, "Failed", StringComparison.InvariantCultureIgnoreCase))
                 {
                     _logger.LogMetric("VmProvisioningFailureCountMetric", 1);
-                    //var hostName = virtualMachine.Host.Id.Split(new[] {'/'}).Last();
-                    _cacheProvider.AddData(virtualMachine.Host.Id.ToLower(), DateTimeOffset.Now.ToString(), TimeSpan.FromMinutes(5));
+                    _cacheProvider.AddData(virtualMachine.Host.Id.ToLower(), DateTimeOffset.Now.ToString(), TimeSpan.FromMinutes(10));
                     var dedicatedHostId = await GetDedicatedHostForVmPlacement(
                         token,
                         cloudName,
@@ -345,18 +349,20 @@ namespace DedicatedHostsManager
                     await computeManagementClient.VirtualMachines.DeallocateAsync(resourceGroup, virtualMachine.Name);
                     virtualMachine.Host = new SubResource(dedicatedHostId);
                     response = await computeManagementClient.VirtualMachines
-                        .BeginCreateOrUpdateWithHttpMessagesAsync(
+                        .CreateOrUpdateAsync(
                             resourceGroup,
                             vmName,
-                            virtualMachine,
-                            null);
+                            virtualMachine);
                     try
                     {
                         await computeManagementClient.VirtualMachines.StartAsync(resourceGroup, virtualMachine.Name);
                     }
-                    catch (CloudException)
+                    catch (CloudException cloudException)
                     {
-                        // do nothing, let it retry
+                        if (cloudException.Message.Contains("Please ensure that the dedicated host has enough capacity", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            vmProvisioningState = "Failed";
+                        }
                     }
                 }
 
@@ -559,7 +565,7 @@ namespace DedicatedHostsManager
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = DedicatedHostHelpers.ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
             return (await computeManagementClient.DedicatedHostGroups.GetAsync(resourceGroupName, hostGroupName)).Id;
         }
 
@@ -625,7 +631,7 @@ namespace DedicatedHostsManager
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = DedicatedHostHelpers.ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
             var dedicatedHostList = new List<DedicatedHost>();
             var dedicatedHostResponse = await computeManagementClient.DedicatedHosts.ListByHostGroupAsync(resourceGroup, hostGroupName);
             dedicatedHostList.AddRange(dedicatedHostResponse.ToList());
@@ -669,7 +675,7 @@ namespace DedicatedHostsManager
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = DedicatedHostHelpers.ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
             var dedicatedHostGroups = new List<DedicatedHostGroup>();
             var dedicatedHostGroupResponse =
                 await computeManagementClient.DedicatedHostGroups.ListBySubscriptionAsync();
@@ -716,7 +722,7 @@ namespace DedicatedHostsManager
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = DedicatedHostHelpers.ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
             return await computeManagementClient.DedicatedHostGroups.DeleteWithHttpMessagesAsync(resourceGroup, hostGroupName);
         }
 
@@ -750,7 +756,7 @@ namespace DedicatedHostsManager
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = DedicatedHostHelpers.ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
 
             return await computeManagementClient.DedicatedHosts.DeleteWithHttpMessagesAsync(
                 resourceGroup,

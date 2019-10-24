@@ -89,7 +89,7 @@ namespace DedicatedHostsManager
                 var requestBody = await req.ReadAsStringAsync();
                 var virtualMachine = JsonConvert.DeserializeObject<VirtualMachine>(requestBody);
 
-                var dedicatedHostCreateVmResponse = await _dedicatedHostEngine.CreateVmOnDedicatedHost(
+                var createVmResponse = await _dedicatedHostEngine.CreateVmOnDedicatedHost(
                     parameters[Constants.Token],
                     parameters[Constants.CloudName],
                     parameters[Constants.TenantId],
@@ -105,7 +105,7 @@ namespace DedicatedHostsManager
                     $"CreateVm: Took {sw.Elapsed.TotalSeconds}s to create {parameters[Constants.VmName]}");
                 log.LogMetric("VmCreationTimeSecondsMetric", sw.Elapsed.TotalSeconds);
                 log.LogMetric("VmCreationSuccessCountMetric", 1);
-                return new OkObjectResult(dedicatedHostCreateVmResponse);
+                return new OkObjectResult(createVmResponse);
             }
             catch (Exception exception)
             {
