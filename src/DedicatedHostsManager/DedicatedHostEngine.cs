@@ -350,7 +350,14 @@ namespace DedicatedHostsManager
                             vmName,
                             virtualMachine,
                             null);
-                    await computeManagementClient.VirtualMachines.StartAsync(resourceGroup, virtualMachine.Name);
+                    try
+                    {
+                        await computeManagementClient.VirtualMachines.StartAsync(resourceGroup, virtualMachine.Name);
+                    }
+                    catch (CloudException)
+                    {
+                        // do nothing, let it retry
+                    }
                 }
 
                 // VM provisioning takes a few seconds, wait for provisioning state to update
