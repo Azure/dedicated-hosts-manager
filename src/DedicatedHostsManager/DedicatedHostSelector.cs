@@ -14,6 +14,9 @@ using Microsoft.Rest;
 
 namespace DedicatedHostsManager
 {
+    /// <summary>
+    /// 
+    /// </summary>
     public class DedicatedHostSelector : IDedicatedHostSelector
     {
         private readonly ILogger<DedicatedHostSelector> _logger;

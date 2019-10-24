@@ -19,25 +19,32 @@ using Newtonsoft.Json;
 using Polly;
 using SubResource = Microsoft.Azure.Management.Compute.Models.SubResource;
 
+///
 namespace DedicatedHostsManager
 {
+    /// <summary>
+    /// 
+    /// </summary>
     public class DedicatedHostEngine : IDedicatedHostEngine
     {
         private readonly ILogger<DedicatedHostEngine> _logger;
         private readonly IConfiguration _configuration;
         private readonly IDedicatedHostSelector _dedicatedHostSelector;
         private readonly ISyncProvider _syncProvider;
+        private readonly ICacheProvider _cacheProvider;
 
         public DedicatedHostEngine(
             ILogger<DedicatedHostEngine> logger, 
             IConfiguration configuration,
             IDedicatedHostSelector dedicatedHostSelector,
-            ISyncProvider syncProvider)
+            ISyncProvider syncProvider,
+            ICacheProvider cacheProvider)
         {
             _logger = logger;
             _configuration = configuration;
             _dedicatedHostSelector = dedicatedHostSelector;
             _syncProvider = syncProvider;
+            _cacheProvider = cacheProvider;
         }
 
         public async Task<AzureOperationResponse<DedicatedHostGroup>> CreateDedicatedHostGroup(
@@ -288,15 +295,14 @@ namespace DedicatedHostsManager
             var minIntervalToCheckForVmInSeconds = int.Parse(_configuration["MinIntervalToCheckForVmInSeconds"]);
             var maxIntervalToCheckForVmInSeconds = int.Parse(_configuration["MaxIntervalToCheckForVmInSeconds"]);
             var retryCountToCheckVmState = int.Parse(_configuration["RetryCountToCheckVmState"]);
-
-            // TODO: time box VM creation
-            // TODO: below logic will be modified once the Compute DH API is fixed
-            while (string.IsNullOrEmpty(vmProvisioningState)
+            var maxRetriesToCreateVm = int.Parse(_configuration["MaxRetriesToCreateVm"]);
+            var vmCreationRetryCount = 0;
+            
+            while ((string.IsNullOrEmpty(vmProvisioningState)
                    || !string.Equals(vmProvisioningState, "Succeeded", StringComparison.InvariantCultureIgnoreCase))
-            {
-                if (!string.Equals(vmProvisioningState, "Creating", StringComparison.InvariantCultureIgnoreCase)
-                    && !string.Equals(vmProvisioningState, "Updating", StringComparison.InvariantCultureIgnoreCase)
-                    && !string.Equals(vmProvisioningState, "Deleting", StringComparison.InvariantCultureIgnoreCase))
+                   && vmCreationRetryCount < maxRetriesToCreateVm)
+            {             
+                if (string.IsNullOrEmpty(vmProvisioningState))
                 {
                     var dedicatedHostId = await GetDedicatedHostForVmPlacement(
                         token,
@@ -317,12 +323,45 @@ namespace DedicatedHostsManager
                             virtualMachine,
                             null);
                 }
-                else
+
+                // TODO: Remove below if block once the Compute DH bug is fixed.
+                // TODO: Intentional code duplication below to keep logic related to this bug separate.
+                if (string.Equals(vmProvisioningState, "Failed", StringComparison.InvariantCultureIgnoreCase))
                 {
-                    // VM provisioning takes a few seconds
-                    await Task.Delay(TimeSpan.FromSeconds(new Random().Next(minIntervalToCheckForVmInSeconds, maxIntervalToCheckForVmInSeconds)));
+                    _logger.LogMetric("VmProvisioningFailureCountMetric", 1);
+                    //var hostName = virtualMachine.Host.Id.Split(new[] {'/'}).Last();
+                    _cacheProvider.AddData(virtualMachine.Host.Id.ToLower(), DateTimeOffset.Now.ToString(), TimeSpan.FromMinutes(5));
+                    var dedicatedHostId = await GetDedicatedHostForVmPlacement(
+                        token,
+                        cloudName,
+                        tenantId,
+                        subscriptionId,
+                        resourceGroup,
+                        dhgName,
+                        vmSku,
+                        vmName,
+                        region.Name);
+
+                    await computeManagementClient.VirtualMachines.DeallocateAsync(resourceGroup, virtualMachine.Name);
+                    virtualMachine.Host = new SubResource(dedicatedHostId);
+                    response = await computeManagementClient.VirtualMachines
+                        .BeginCreateOrUpdateWithHttpMessagesAsync(
+                            resourceGroup,
+                            vmName,
+                            virtualMachine,
+                            null);
+                    try
+                    {
+                        await computeManagementClient.VirtualMachines.StartAsync(resourceGroup, virtualMachine.Name);
+                    }
+                    catch (CloudException)
+                    {
+                        // do nothing, let it retry
+                    }
                 }
 
+                // VM provisioning takes a few seconds, wait for provisioning state to update
+                await Task.Delay(TimeSpan.FromSeconds(new Random().Next(minIntervalToCheckForVmInSeconds, maxIntervalToCheckForVmInSeconds)));
                 await Policy
                     .Handle<CloudException>()
                     .WaitAndRetryAsync(
@@ -338,18 +377,8 @@ namespace DedicatedHostsManager
                             .ProvisioningState;
                     });
 
-                vmProvisioningState =
-                    (await computeManagementClient.VirtualMachines.GetAsync(resourceGroup, virtualMachine.Name))
-                    .ProvisioningState;
-
                 _logger.LogInformation($"Provisioning state for {virtualMachine.Name} is {vmProvisioningState}");
-
-                if (string.Equals(vmProvisioningState, "Failed", StringComparison.InvariantCultureIgnoreCase))
-                {
-                    await computeManagementClient.VirtualMachines.DeleteAsync(resourceGroup, virtualMachine.Name);
-                    _logger.LogInformation($"Deleting {virtualMachine.Name}, and retrying...");
-                    _logger.LogMetric("VmProvisioningFailureCountMetric", 1);
-                }
+                vmCreationRetryCount++;
             }
 
             return response;
@@ -428,6 +457,14 @@ namespace DedicatedHostsManager
                 if (string.IsNullOrEmpty(matchingHostId))
                 {
                     var lockRetryCount = int.Parse(_configuration["LockRetryCount"]);
+                    var hostGroupId = await GetDedicatedHostGroupId(
+                        token,
+                        cloudName,
+                        tenantId,
+                        subscriptionId,
+                        resourceGroup,
+                        hostGroupName);
+
                     await Policy
                         .Handle<StorageException>()
                         .WaitAndRetryAsync(
@@ -439,7 +476,7 @@ namespace DedicatedHostsManager
                             try
                             {
                                 _logger.LogInformation($"About to lock");
-                                await _syncProvider.StartSerialRequests(_configuration["LockBlobName"]);
+                                await _syncProvider.StartSerialRequests(hostGroupId);
 
                                 matchingHostId = await SelectHostFromHostGroup(
                                     token,
@@ -489,12 +526,12 @@ namespace DedicatedHostsManager
                             finally
                             {
                                 _logger.LogInformation($"Releasing the lock");
-                                await _syncProvider.EndSerialRequests(_configuration["LockBlobName"]);
+                                await _syncProvider.EndSerialRequests(hostGroupId);
                             }
                         });
                 }
 
-                _logger.LogInformation($"Retry to find a host for {requiredVmSize}");
+                _logger.LogInformation($"Retry to find a host for {vmName} of SKU {requiredVmSize}");
             }
 
             if (string.IsNullOrEmpty(matchingHostId))
@@ -506,6 +543,24 @@ namespace DedicatedHostsManager
             _logger.LogMetric("GetDedicatedHostTimeSecondsMetric", innerLoopStopwatch.Elapsed.TotalSeconds);
             _logger.LogInformation($"GetDedicatedHost: Took {innerLoopStopwatch.Elapsed.TotalSeconds} seconds to find a matching host {matchingHostId} for {vmName} of {requiredVmSize} SKU.");
             return matchingHostId;
+        }
+
+        private async Task<string> GetDedicatedHostGroupId(
+            string token,
+            string cloudName,
+            string tenantId,
+            string subscriptionId,
+            string resourceGroupName, 
+            string hostGroupName)
+        {
+            var azureCredentials = new AzureCredentials(
+                new TokenCredentials(token),
+                new TokenCredentials(token),
+                tenantId,
+                AzureEnvironment.FromName(cloudName));
+
+            var computeManagementClient = DedicatedHostHelpers.ComputeManagementClient(subscriptionId, azureCredentials);
+            return (await computeManagementClient.DedicatedHostGroups.GetAsync(resourceGroupName, hostGroupName)).Id;
         }
 
         private async Task<string> SelectHostFromHostGroup(
@@ -524,8 +579,13 @@ namespace DedicatedHostsManager
                 subscriptionId,
                 resourceGroup,
                 hostGroupName);
+            var prunedDedicatedHostList = dedicatedHostList.Where(h => !_cacheProvider.KeyExists(h.Id.ToLower())).ToList();
+            if (!prunedDedicatedHostList.Any())
+            {
+                return null;
+            }
 
-            var matchingHost = await _dedicatedHostSelector.SelectDedicatedHost(
+            return await _dedicatedHostSelector.SelectDedicatedHost(
                 token,
                 cloudName,
                 tenantId,
@@ -533,9 +593,7 @@ namespace DedicatedHostsManager
                 resourceGroup,
                 hostGroupName,
                 requiredVmSize,
-                dedicatedHostList);
-
-            return matchingHost;
+                prunedDedicatedHostList);
         }
 
         public async Task<IList<DedicatedHost>> ListDedicatedHosts(
