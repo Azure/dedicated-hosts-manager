@@ -322,9 +322,13 @@ namespace DedicatedHostsManager
                     }
                     catch (CloudException cloudException)
                     {
-                        if (cloudException.Message.Contains("Please ensure that the dedicated host has enough capacity", StringComparison.InvariantCultureIgnoreCase))
+                        if (!string.IsNullOrEmpty(cloudException.Body?.Code) && string.Equals(cloudException.Body?.Code, "AllocationFailed"))
                         {
-                            vmProvisioningState = "Failed";
+                            // do nothing, retry when we hit a allocation issue related to capacity
+                        }
+                        else
+                        {
+                            throw;
                         }
                     }
                 }
@@ -359,9 +363,13 @@ namespace DedicatedHostsManager
                     }
                     catch (CloudException cloudException)
                     {
-                        if (cloudException.Message.Contains("Please ensure that the dedicated host has enough capacity", StringComparison.InvariantCultureIgnoreCase))
+                        if (!string.IsNullOrEmpty(cloudException.Body?.Code) && string.Equals(cloudException.Body?.Code, "AllocationFailed"))
                         {
-                            vmProvisioningState = "Failed";
+                            // do nothing, retry when we hit a allocation issue related to capacity
+                        }
+                        else
+                        {
+                            throw;
                         }
                     }
                 }
