@@ -586,19 +586,6 @@ namespace DedicatedHostsManager
             string hostGroupName, 
             string requiredVmSize)
         {
-            var dedicatedHostList = await ListDedicatedHosts(
-                token,
-                cloudName,
-                tenantId,
-                subscriptionId,
-                resourceGroup,
-                hostGroupName);
-            var prunedDedicatedHostList = dedicatedHostList.Where(h => !_cacheProvider.KeyExists(h.Id.ToLower())).ToList();
-            if (!prunedDedicatedHostList.Any())
-            {
-                return null;
-            }
-
             return await _dedicatedHostSelector.SelectDedicatedHost(
                 token,
                 cloudName,
@@ -606,54 +593,7 @@ namespace DedicatedHostsManager
                 subscriptionId,
                 resourceGroup,
                 hostGroupName,
-                requiredVmSize,
-                prunedDedicatedHostList);
-        }
-
-        public async Task<IList<DedicatedHost>> ListDedicatedHosts(
-            string token,
-            string cloudName,
-            string tenantId,
-            string subscriptionId, 
-            string resourceGroup, 
-            string hostGroupName)
-        {
-            if (string.IsNullOrEmpty(token))
-            {
-                throw new ArgumentNullException(nameof(token));
-            }
-
-            if (string.IsNullOrEmpty(cloudName))
-            {
-                throw new ArgumentNullException(nameof(cloudName));
-            }
-
-            if (string.IsNullOrEmpty(tenantId))
-            {
-                throw new ArgumentNullException(nameof(tenantId));
-            }
-
-            var azureCredentials = new AzureCredentials(
-                new TokenCredentials(token),
-                new TokenCredentials(token),
-                tenantId,
-                AzureEnvironment.FromName(cloudName));
-
-            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
-            var dedicatedHostList = new List<DedicatedHost>();
-            var dedicatedHostResponse = await computeManagementClient.DedicatedHosts.ListByHostGroupAsync(resourceGroup, hostGroupName);
-            dedicatedHostList.AddRange(dedicatedHostResponse.ToList());
-
-            var nextLink = dedicatedHostResponse.NextPageLink;
-
-            while (!string.IsNullOrEmpty(nextLink))
-            {
-                dedicatedHostResponse = await computeManagementClient.DedicatedHosts.ListByHostGroupNextAsync(nextLink);
-                dedicatedHostList.AddRange(dedicatedHostList.ToList());
-                nextLink = dedicatedHostResponse.NextPageLink;
-            }
-
-            return dedicatedHostList;
+                requiredVmSize);
         }
 
         public async Task<IList<DedicatedHostGroup>> ListDedicatedHostGroups(

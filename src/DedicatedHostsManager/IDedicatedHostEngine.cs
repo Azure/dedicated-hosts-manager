@@ -53,14 +53,6 @@ namespace DedicatedHostsManager
             string vmName,
             string location);
 
-        Task<IList<DedicatedHost>> ListDedicatedHosts(
-            string token,
-            string cloudName,
-            string tenantId,
-            string subscriptionId,
-            string resourceGroup,
-            string hostGroupName);
-
         Task<IList<DedicatedHostGroup>> ListDedicatedHostGroups(
             string token,
             string cloudName,

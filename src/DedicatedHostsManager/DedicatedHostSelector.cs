@@ -14,16 +14,15 @@ using Microsoft.Rest;
 
 namespace DedicatedHostsManager
 {
-    /// <summary>
-    /// 
-    /// </summary>
     public class DedicatedHostSelector : IDedicatedHostSelector
     {
         private readonly ILogger<DedicatedHostSelector> _logger;
+        private readonly ICacheProvider _cacheProvider;
 
-        public DedicatedHostSelector(ILogger<DedicatedHostSelector> logger)
+        public DedicatedHostSelector(ILogger<DedicatedHostSelector> logger, ICacheProvider cacheProvider)
         {
             _logger = logger;
+            _cacheProvider = cacheProvider;
         }
 
         public async Task<string> SelectDedicatedHost(
@@ -33,8 +32,7 @@ namespace DedicatedHostsManager
             string subscriptionId,
             string resourceGroup,
             string hostGroupName,
-            string requiredVmSize,
-            IList<DedicatedHost> dedicatedHostList)
+            string requiredVmSize)
         {
             if (string.IsNullOrEmpty(token))
             {
@@ -66,9 +64,17 @@ namespace DedicatedHostsManager
                 throw new ArgumentException(nameof(hostGroupName));
             }
 
-            if (dedicatedHostList == null)
+            var dedicatedHostList = await ListDedicatedHosts(
+                token,
+                cloudName,
+                tenantId,
+                subscriptionId,
+                resourceGroup,
+                hostGroupName);
+            var prunedDedicatedHostList = dedicatedHostList.Where(h => !_cacheProvider.KeyExists(h.Id.ToLower())).ToList();
+            if (!prunedDedicatedHostList.Any())
             {
-                throw new ArgumentException(nameof(dedicatedHostList));
+                return null;
             }
 
             var hostToAvailableVmMapping = new ConcurrentDictionary<DedicatedHost, List<DedicatedHostAllocatableVM>>();
@@ -103,7 +109,7 @@ namespace DedicatedHostsManager
             return matchingHosts[randomHost].Id;
         }
 
-        public async Task GetAllocatableVmsOnHost(
+        public virtual async Task GetAllocatableVmsOnHost(
             string token,
             string cloudName,
             string tenantId,
@@ -150,6 +156,52 @@ namespace DedicatedHostsManager
             }
 
             dictionary[dedicatedHost] = virtualMachineList;
+        }
+
+        public virtual async Task<IList<DedicatedHost>> ListDedicatedHosts(
+            string token,
+            string cloudName,
+            string tenantId,
+            string subscriptionId,
+            string resourceGroup,
+            string hostGroupName)
+        {
+            if (string.IsNullOrEmpty(token))
+            {
+                throw new ArgumentNullException(nameof(token));
+            }
+
+            if (string.IsNullOrEmpty(cloudName))
+            {
+                throw new ArgumentNullException(nameof(cloudName));
+            }
+
+            if (string.IsNullOrEmpty(tenantId))
+            {
+                throw new ArgumentNullException(nameof(tenantId));
+            }
+
+            var azureCredentials = new AzureCredentials(
+                new TokenCredentials(token),
+                new TokenCredentials(token),
+                tenantId,
+                AzureEnvironment.FromName(cloudName));
+
+            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
+            var dedicatedHostList = new List<DedicatedHost>();
+            var dedicatedHostResponse = await computeManagementClient.DedicatedHosts.ListByHostGroupAsync(resourceGroup, hostGroupName);
+            dedicatedHostList.AddRange(dedicatedHostResponse.ToList());
+
+            var nextLink = dedicatedHostResponse.NextPageLink;
+
+            while (!string.IsNullOrEmpty(nextLink))
+            {
+                dedicatedHostResponse = await computeManagementClient.DedicatedHosts.ListByHostGroupNextAsync(nextLink);
+                dedicatedHostList.AddRange(dedicatedHostList.ToList());
+                nextLink = dedicatedHostResponse.NextPageLink;
+            }
+
+            return dedicatedHostList;
         }
 
         protected virtual IComputeManagementClient ComputeManagementClient(
