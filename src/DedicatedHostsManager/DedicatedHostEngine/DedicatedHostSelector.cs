@@ -1,17 +1,17 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using DedicatedHostsManager.Cache;
+﻿using DedicatedHostsManager.Cache;
 using DedicatedHostsManager.ComputeClient;
-using DedicatedHostsManager.Helpers;
+using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Rest;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace DedicatedHostsManager.DedicatedHostEngine
 {
@@ -19,11 +19,16 @@ namespace DedicatedHostsManager.DedicatedHostEngine
     {
         private readonly ILogger<DedicatedHostSelector> _logger;
         private readonly ICacheProvider _cacheProvider;
+        private readonly IDhmComputeClient _dhmComputeClient;
 
-        public DedicatedHostSelector(ILogger<DedicatedHostSelector> logger, ICacheProvider cacheProvider)
+        public DedicatedHostSelector(
+            ILogger<DedicatedHostSelector> logger, 
+            ICacheProvider cacheProvider,
+            IDhmComputeClient dhmComputeClient)
         {
             _logger = logger;
             _cacheProvider = cacheProvider;
+            _dhmComputeClient = dhmComputeClient;
         }
 
         public async Task<string> SelectDedicatedHost(
@@ -140,15 +145,16 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 new TokenCredentials(token),
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
-
-            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                AzureEnvironment.FromName(cloudName));
             var dedicatedHostDetails = await computeManagementClient.DedicatedHosts.GetAsync(
                 resourceGroup,
                 hostGroupName,
                 dedicatedHost.Name,
                 InstanceViewTypes.InstanceView,
                 default(CancellationToken));
-
             var virtualMachineList = dedicatedHostDetails?.InstanceView?.AvailableCapacity?.AllocatableVMs?.ToList();
             if (virtualMachineList == null)
             {
@@ -187,14 +193,14 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 new TokenCredentials(token),
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
-
-            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                AzureEnvironment.FromName(cloudName));
             var dedicatedHostList = new List<DedicatedHost>();
             var dedicatedHostResponse = await computeManagementClient.DedicatedHosts.ListByHostGroupAsync(resourceGroup, hostGroupName);
             dedicatedHostList.AddRange(dedicatedHostResponse.ToList());
-
             var nextLink = dedicatedHostResponse.NextPageLink;
-
             while (!string.IsNullOrEmpty(nextLink))
             {
                 dedicatedHostResponse = await computeManagementClient.DedicatedHosts.ListByHostGroupNextAsync(nextLink);
@@ -203,14 +209,6 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             }
 
             return dedicatedHostList;
-        }
-
-        protected virtual IDhmComputeClient ComputeManagementClient(
-            string subscriptionId,
-            AzureCredentials azureCredentials)
-        {
-            var computeManagementClient = DedicatedHostHelpers.ComputeManagementClient(subscriptionId, azureCredentials);
-            return computeManagementClient;
         }
     }
 }

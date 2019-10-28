@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using DedicatedHostsManager;
 using DedicatedHostsManager.Cache;
+using DedicatedHostsManager.ComputeClient;
 using DedicatedHostsManager.DedicatedHostEngine;
 using DedicatedHostsManager.Sync;
 using Microsoft.ApplicationInsights.AspNetCore;
@@ -71,6 +72,7 @@ namespace DedicatedHostsManager
             });
 
             builder.Services.AddHttpClient();
+            builder.Services.AddSingleton<IDhmComputeClient, DhmComputeClient>();
             builder.Services.AddTransient<IDedicatedHostEngine, DedicatedHostEngine.DedicatedHostEngine>();
             builder.Services.AddTransient<IDedicatedHostSelector, DedicatedHostSelector>();
             builder.Services.AddTransient<ISyncProvider, SyncProvider>();

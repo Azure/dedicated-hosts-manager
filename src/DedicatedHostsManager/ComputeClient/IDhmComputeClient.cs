@@ -7,7 +7,7 @@ namespace DedicatedHostsManager.ComputeClient
 {
     public interface IDhmComputeClient
     {
-        Task<ComputeManagementClient> GetComputeManagementClient(
+        Task<IComputeManagementClient> GetComputeManagementClient(
             string subscriptionId,
             AzureCredentials azureCredentials,
             AzureEnvironment azureEnvironment);

@@ -1,13 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using DedicatedHostsManager.Cache;
+﻿using DedicatedHostsManager.Cache;
 using DedicatedHostsManager.ComputeClient;
-using DedicatedHostsManager.Helpers;
 using DedicatedHostsManager.Sync;
+using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
@@ -19,6 +13,12 @@ using Microsoft.Rest.Azure;
 using Microsoft.WindowsAzure.Storage;
 using Newtonsoft.Json;
 using Polly;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using SubResource = Microsoft.Azure.Management.Compute.Models.SubResource;
 
 namespace DedicatedHostsManager.DedicatedHostEngine
@@ -30,19 +30,22 @@ namespace DedicatedHostsManager.DedicatedHostEngine
         private readonly IDedicatedHostSelector _dedicatedHostSelector;
         private readonly ISyncProvider _syncProvider;
         private readonly ICacheProvider _cacheProvider;
+        private readonly IDhmComputeClient _dhmComputeClient;
 
         public DedicatedHostEngine(
             ILogger<DedicatedHostEngine> logger, 
             IConfiguration configuration,
             IDedicatedHostSelector dedicatedHostSelector,
             ISyncProvider syncProvider,
-            ICacheProvider cacheProvider)
+            ICacheProvider cacheProvider,
+            IDhmComputeClient dhmComputeClient)
         {
             _logger = logger;
             _configuration = configuration;
             _dedicatedHostSelector = dedicatedHostSelector;
             _syncProvider = syncProvider;
             _cacheProvider = cacheProvider;
+            _dhmComputeClient = dhmComputeClient;
         }
 
         public async Task<AzureOperationResponse<DedicatedHostGroup>> CreateDedicatedHostGroup(
@@ -109,7 +112,10 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             }
 
             var dhgCreateRetryCount = int.Parse(_configuration["DhgCreateRetryCount"]);
-            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId, 
+                azureCredentials,
+                AzureEnvironment.FromName(cloudName));
             var response = new AzureOperationResponse<DedicatedHostGroup>();
             await Policy
                 .Handle<CloudException>()
@@ -194,7 +200,10 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                AzureEnvironment.FromName(cloudName));
             if (await computeManagementClient.DedicatedHostGroups.GetAsync(resourceGroup, dhgName) == null)
             {
                 await computeManagementClient.DedicatedHostGroups.CreateOrUpdateAsync(
@@ -287,7 +296,10 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                AzureEnvironment.FromName(cloudName));
             VirtualMachine response = null;
             var vmProvisioningState = virtualMachine.ProvisioningState;
             var minIntervalToCheckForVmInSeconds = int.Parse(_configuration["MinIntervalToCheckForVmInSeconds"]);
@@ -575,7 +587,10 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                AzureEnvironment.FromName(cloudName));
             return (await computeManagementClient.DedicatedHostGroups.GetAsync(resourceGroupName, hostGroupName)).Id;
         }
 
@@ -625,7 +640,10 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                AzureEnvironment.FromName(cloudName));
             var dedicatedHostGroups = new List<DedicatedHostGroup>();
             var dedicatedHostGroupResponse =
                 await computeManagementClient.DedicatedHostGroups.ListBySubscriptionAsync();
@@ -672,7 +690,10 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                AzureEnvironment.FromName(cloudName));
             return await computeManagementClient.DedicatedHostGroups.DeleteWithHttpMessagesAsync(resourceGroup, hostGroupName);
         }
 
@@ -706,21 +727,16 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
 
-            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                AzureEnvironment.FromName(cloudName));
 
             return await computeManagementClient.DedicatedHosts.DeleteWithHttpMessagesAsync(
                 resourceGroup,
                 hostGroupName, 
                 dhName,
                 null);
-        }
-
-        protected virtual IDhmComputeClient ComputeManagementClient(
-            string subscriptionId,
-            AzureCredentials azureCredentials)
-        {
-            var computeManagementClient = DedicatedHostHelpers.ComputeManagementClient(subscriptionId, azureCredentials);
-            return computeManagementClient;
-        }
+        }        
     }
 }

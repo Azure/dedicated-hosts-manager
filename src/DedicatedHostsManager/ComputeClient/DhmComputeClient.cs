@@ -15,8 +15,7 @@ namespace DedicatedHostsManager.ComputeClient
 {
     public class DhmComputeClient : IDhmComputeClient
     {
-        private static ComputeManagementClient _computeManagementClient;
-        private readonly IHttpClientFactory _httpClientFactory;
+        private static IComputeManagementClient _computeManagementClient;
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
         private readonly ILogger<CacheProvider> _logger;
@@ -28,11 +27,10 @@ namespace DedicatedHostsManager.ComputeClient
         {
             _configuration = configuration;
             _logger = logger;
-            _httpClientFactory = httpClientFactory;
-            _httpClient = _httpClientFactory.CreateClient();
+            _httpClient = httpClientFactory.CreateClient();
         }
 
-        public async Task<ComputeManagementClient> GetComputeManagementClient(
+        public async Task<IComputeManagementClient> GetComputeManagementClient(
             string subscriptionId,
             AzureCredentials azureCredentials,
             AzureEnvironment azureEnvironment)
@@ -54,7 +52,7 @@ namespace DedicatedHostsManager.ComputeClient
             await Policy
                 .Handle<HttpRequestException>()
                 .WaitAndRetryAsync(
-                    3, // TODO
+                    3, // TODO: read from config
                     r => TimeSpan.FromSeconds(2 * r),
                     (ex, ts, r) =>
                         _logger.LogInformation(
@@ -62,7 +60,7 @@ namespace DedicatedHostsManager.ComputeClient
                 .ExecuteAsync(async () =>
                     {
                         armResponseMessage = await _httpClient.GetAsync(
-                            "https://management.azure.com/metadata/endpoints?api-version=2019-05-01");
+                            "https://management.azure.com/metadata/endpoints?api-version=2019-05-01"); // TODO: read from config
                     });
 
             if (armResponseMessage == null || armResponseMessage?.StatusCode != HttpStatusCode.OK)
