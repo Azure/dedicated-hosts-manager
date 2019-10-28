@@ -1,9 +1,9 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
-using System;
 
-namespace DedicatedHostsManager
+namespace DedicatedHostsManager.Cache
 {
     public class CacheProvider : ICacheProvider
     {

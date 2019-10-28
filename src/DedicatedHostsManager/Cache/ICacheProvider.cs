@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace DedicatedHostsManager
+namespace DedicatedHostsManager.Cache
 {
     public interface ICacheProvider
     {

@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.Azure.Management.Compute.Models;
 
-namespace DedicatedHostsManager
+namespace DedicatedHostsManager.DedicatedHostEngine
 {
     public interface IDedicatedHostSelector
     {

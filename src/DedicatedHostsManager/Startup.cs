@@ -2,6 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using DedicatedHostsManager;
+using DedicatedHostsManager.Cache;
+using DedicatedHostsManager.DedicatedHostEngine;
+using DedicatedHostsManager.Sync;
 using Microsoft.ApplicationInsights.AspNetCore;
 using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -67,7 +70,8 @@ namespace DedicatedHostsManager
                 loggingBuilder.AddFilter<Microsoft.Extensions.Logging.Console.ConsoleLoggerProvider>("", LogLevel.Information);
             });
 
-            builder.Services.AddTransient<IDedicatedHostEngine, DedicatedHostEngine>();
+            builder.Services.AddHttpClient();
+            builder.Services.AddTransient<IDedicatedHostEngine, DedicatedHostEngine.DedicatedHostEngine>();
             builder.Services.AddTransient<IDedicatedHostSelector, DedicatedHostSelector>();
             builder.Services.AddTransient<ISyncProvider, SyncProvider>();
             builder.Services.AddTransient<ICacheProvider, CacheProvider>();

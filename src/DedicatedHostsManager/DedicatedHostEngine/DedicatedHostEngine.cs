@@ -4,8 +4,10 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using DedicatedHostsManager.Cache;
+using DedicatedHostsManager.ComputeClient;
 using DedicatedHostsManager.Helpers;
-using Microsoft.Azure.Management.Compute;
+using DedicatedHostsManager.Sync;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
@@ -19,7 +21,7 @@ using Newtonsoft.Json;
 using Polly;
 using SubResource = Microsoft.Azure.Management.Compute.Models.SubResource;
 
-namespace DedicatedHostsManager
+namespace DedicatedHostsManager.DedicatedHostEngine
 {
     public class DedicatedHostEngine : IDedicatedHostEngine
     {
@@ -713,7 +715,7 @@ namespace DedicatedHostsManager
                 null);
         }
 
-        protected virtual IComputeManagementClient ComputeManagementClient(
+        protected virtual IDhmComputeClient ComputeManagementClient(
             string subscriptionId,
             AzureCredentials azureCredentials)
         {

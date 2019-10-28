@@ -10,7 +10,9 @@ namespace DedicatedHostsManager.Helpers
 
         // TODO: refactor hard coded URL; need to use this URL for non-public clouds
         //
-        public static ComputeManagementClient ComputeManagementClient(string subscriptionId, AzureCredentials azureCredentials)
+        public static ComputeManagementClient ComputeManagementClient(
+            string subscriptionId, 
+            AzureCredentials azureCredentials)
         {
             return _computeManagementClient ?? (_computeManagementClient = new ComputeManagementClient(azureCredentials)
             {

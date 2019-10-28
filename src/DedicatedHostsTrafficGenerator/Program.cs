@@ -14,6 +14,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DedicatedHostsTrafficGenerator
@@ -66,6 +67,18 @@ namespace DedicatedHostsTrafficGenerator
                 LongRunningOperationRetryTimeout = 5
             };
 
+            //var foo = computeManagementClient.VirtualMachines.Get("mdewan-citrix-test2", "vm0-9350");
+            //var dhgInfo = await computeManagementClient.DedicatedHostGroups.GetAsync("mdewan-citrix-test3", "citrix-dhg");
+            //var hosts = await computeManagementClient.DedicatedHosts.ListByHostGroupAsync("mdewan-citrix-test5", dhgInfo.Id);
+            //var dedicatedHostDetails = await computeManagementClient.DedicatedHosts.GetAsync(
+            //    "mdewan-citrix-test6",
+            //    "citrix-dhg",
+            //    "host-523",
+            //    InstanceViewTypes.InstanceView,
+            //    default(CancellationToken));
+
+            //var virtualMachineList = dedicatedHostDetails?.InstanceView?.AvailableCapacity?.AllocatableVMs?.ToList();
+
             var resourceGroup = azure.ResourceGroups.Define(resourceGroupName)
                 .WithRegion(location)
                 .Create();
@@ -98,6 +111,20 @@ namespace DedicatedHostsTrafficGenerator
                     "adh-poc-vnet",
                     "nic-" + Guid.NewGuid());
 
+#if DEBUG
+                var createVmUri =
+                    $"http://localhost:7071/api/CreateVm" +
+                    $"?token={token}" +
+                    $"&cloudName=AzureUSGovernment" +
+                    $"&tenantId={tenantId}" +
+                    $"&subscriptionId={subscriptionId}" +
+                    $"&resourceGroup={resourceGroupName}" +
+                    $"&location={location}" +
+                    $"&vmSku={virtualMachineSize}" +
+                    $"&vmName={vmName}" +
+                    $"&platformFaultDomainCount=1";
+#else
+
                 var createVmUri =
                     $"https://adh.azurewebsites.us/api/CreateVm?code=a7xadlDU/qH/7R1w5mza4lwTbZnLBZf6uSFBCh31URy2tg3WIEDr3A==" +
                     $"&token={token}" +
@@ -109,7 +136,7 @@ namespace DedicatedHostsTrafficGenerator
                     $"&vmSku={virtualMachineSize}" +
                     $"&vmName={vmName}" +
                     $"&platformFaultDomainCount=1";
-
+#endif
                 var httpContent = new StringContent(JsonConvert.SerializeObject(virtualMachine), Encoding.UTF8, "application/json");
                 inputDictionary[createVmUri] = httpContent;                
             }

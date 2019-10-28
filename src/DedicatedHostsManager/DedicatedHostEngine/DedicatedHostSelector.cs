@@ -4,15 +4,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using DedicatedHostsManager.Cache;
+using DedicatedHostsManager.ComputeClient;
 using DedicatedHostsManager.Helpers;
-using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Rest;
 
-namespace DedicatedHostsManager
+namespace DedicatedHostsManager.DedicatedHostEngine
 {
     public class DedicatedHostSelector : IDedicatedHostSelector
     {
@@ -204,7 +205,7 @@ namespace DedicatedHostsManager
             return dedicatedHostList;
         }
 
-        protected virtual IComputeManagementClient ComputeManagementClient(
+        protected virtual IDhmComputeClient ComputeManagementClient(
             string subscriptionId,
             AzureCredentials azureCredentials)
         {
