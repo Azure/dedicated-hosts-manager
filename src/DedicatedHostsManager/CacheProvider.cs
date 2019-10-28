@@ -1,9 +1,7 @@
-﻿using System;
-using System.Linq;
-using System.Threading;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
+using System;
 
 namespace DedicatedHostsManager
 {
@@ -12,7 +10,7 @@ namespace DedicatedHostsManager
         private static readonly object LockObject = new object();
         private readonly IConfiguration _configuration;
         private readonly ILogger<CacheProvider> _logger;
-        private readonly int _defaultDbIndex = 0;
+        private readonly int _dbIndex = 0;
         private readonly string _redisCacheConnection;
         private ConnectionMultiplexer _connectionMultiplexer;
 
@@ -21,54 +19,52 @@ namespace DedicatedHostsManager
             _configuration = configuration;
             _logger = logger;
             _redisCacheConnection = _configuration.GetConnectionString("RedisConnectionString");
-            _defaultDbIndex = 0;
+            _dbIndex = 0;
         }
        
         public ConnectionMultiplexer ConnectionMultiplexer
         {
             get
             {
-                if (_connectionMultiplexer == null || !_connectionMultiplexer.IsConnected)
+                if (_connectionMultiplexer != null && _connectionMultiplexer.IsConnected)
                 {
-                    lock (LockObject)
+                    return _connectionMultiplexer;
+                }
+
+                lock (LockObject)
+                {
+                    if (_connectionMultiplexer != null && _connectionMultiplexer.IsConnected)
                     {
-                        if (_connectionMultiplexer == null || !_connectionMultiplexer.IsConnected)
-                        {
-                            _connectionMultiplexer?.Dispose();
-                            var configurationOptions = ConfigurationOptions.Parse(_redisCacheConnection);
-
-                            // TODO: read values from config
-                            configurationOptions.ConnectTimeout = 5000;
-                            configurationOptions.SyncTimeout = 10000;
-                            configurationOptions.ConnectRetry = 3;
-
-                            configurationOptions.AbortOnConnectFail = false;
-                            configurationOptions.Ssl = true;
-                            var newConnection = ConnectionMultiplexer.Connect(configurationOptions);
-                            Interlocked.Exchange(ref _connectionMultiplexer, newConnection);
-                        }
+                        return _connectionMultiplexer;
                     }
+
+                    _connectionMultiplexer?.Dispose();
+                    var configurationOptions = ConfigurationOptions.Parse(_redisCacheConnection);
+                    configurationOptions.ConnectTimeout = int.Parse(_configuration.GetConnectionString("RedisConnectTimeoutMilliseconds"));
+                    configurationOptions.SyncTimeout = int.Parse(_configuration.GetConnectionString("RedisSyncTimeoutMilliseconds"));
+                    configurationOptions.ConnectRetry = int.Parse(_configuration.GetConnectionString("RedisConnectRetryCount"));
+                    configurationOptions.AbortOnConnectFail = false;
+                    configurationOptions.Ssl = true;
+                    _connectionMultiplexer = ConnectionMultiplexer.Connect(configurationOptions);
                 }
 
                 return _connectionMultiplexer;
             }
-
-            set => _connectionMultiplexer = value;
         }
 
         public bool AddData(string key, string data, TimeSpan? expiry = null)
         {
-            return this.ConnectionMultiplexer.GetDatabase(_defaultDbIndex).StringSet(key, data, expiry);
+            return this.ConnectionMultiplexer.GetDatabase(_dbIndex).StringSet(key, data, expiry);
         }
 
         public bool KeyExists(string key)
         {
-            return ConnectionMultiplexer.GetDatabase(_defaultDbIndex).KeyExists(key);
+            return ConnectionMultiplexer.GetDatabase(_dbIndex).KeyExists(key);
         }
 
         public void DeleteKey(string key)
         {
-            ConnectionMultiplexer.GetDatabase(_defaultDbIndex).KeyDelete(key);
+            ConnectionMultiplexer.GetDatabase(_dbIndex).KeyDelete(key);
         }
 
         public void Dispose()

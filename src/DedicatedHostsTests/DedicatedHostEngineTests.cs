@@ -1,3 +1,7 @@
+using System.Collections.Generic;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using DedicatedHostsManager;
 using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
@@ -7,16 +11,12 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Rest.Azure;
 using Moq;
 using Newtonsoft.Json;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using Xunit;
 using DedicatedHostGroup = Microsoft.Azure.Management.Compute.Models.DedicatedHostGroup;
 
-namespace DedicatedHostsTests
+namespace DedicatedHostsManagerTests
 {
-    public class DedicatedHostEngineUnitTests
+    public class DedicatedHostEngineTests
     {
         private const string Token = "test-Token";
         private const string CloudName = "AzureUSGovernment";
