@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
 
-namespace DedicatedHostsManager
+namespace DedicatedHostsManager.Sync
 {
     public class SyncProvider : ISyncProvider
     {

@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.Azure.Management.Compute.Models;
 
-namespace DedicatedHostsManager
+namespace DedicatedHostsManager.DedicatedHostEngine
 {
     public interface IDedicatedHostSelector
     {
@@ -13,7 +13,14 @@ namespace DedicatedHostsManager
             string subscriptionId,
             string resourceGroup,
             string hostGroupName,
-            string requiredVmSize,
-            IList<DedicatedHost> dedicatedHostList);
+            string requiredVmSize);
+
+        Task<IList<DedicatedHost>> ListDedicatedHosts(
+            string token,
+            string cloudName,
+            string tenantId,
+            string subscriptionId,
+            string resourceGroup,
+            string hostGroupName);
     }
 }

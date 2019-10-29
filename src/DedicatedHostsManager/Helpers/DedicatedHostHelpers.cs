@@ -6,16 +6,21 @@ namespace DedicatedHostsManager.Helpers
 {
     public static class DedicatedHostHelpers
     {
+        private static ComputeManagementClient _computeManagementClient;
+
         // TODO: refactor hard coded URL; need to use this URL for non-public clouds
         //
-        public static ComputeManagementClient ComputeManagementClient(string subscriptionId, AzureCredentials azureCredentials)
+        public static ComputeManagementClient ComputeManagementClient(
+            string subscriptionId, 
+            AzureCredentials azureCredentials)
         {
-            return new ComputeManagementClient(azureCredentials)
+            return _computeManagementClient ?? (_computeManagementClient = new ComputeManagementClient(azureCredentials)
             {
                 SubscriptionId = subscriptionId,
                 BaseUri = new Uri("https://management.usgovcloudapi.net/"),
-                LongRunningOperationRetryTimeout = 5
-            };
+                LongRunningOperationRetryTimeout = 5,
+                HttpClient = {Timeout = TimeSpan.FromMinutes(30)}
+            });
         }
     }
 }

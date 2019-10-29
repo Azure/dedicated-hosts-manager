@@ -11,37 +11,37 @@
             "availableCapacity": {
                 "allocatableVMs": [{
                     "vmSize": "Standard_D2s_v3",
-                    "count": 32.0
-                }, {
-                    "vmSize": "Standard_D4s_v3",
                     "count": 16.0
                 }, {
-                    "vmSize": "Standard_D8s_v3",
+                    "vmSize": "Standard_D4s_v3",
                     "count": 8.0
                 }, {
-                    "vmSize": "Standard_D16s_v3",
+                    "vmSize": "Standard_D8s_v3",
                     "count": 4.0
                 }, {
-                    "vmSize": "Standard_D32-8s_v3",
+                    "vmSize": "Standard_D16s_v3",
                     "count": 2.0
+                }, {
+                    "vmSize": "Standard_D32-8s_v3",
+                    "count": 1.0
                 }, {
                     "vmSize": "Standard_D32-16s_v3",
-                    "count": 2.0
+                    "count": 1.0
                 }, {
                     "vmSize": "Standard_D32s_v3",
-                    "count": 2.0
+                    "count": 1.0
                 }, {
                     "vmSize": "Standard_D48s_v3",
-                    "count": 1.0
+                    "count": 0.0
                 }, {
                     "vmSize": "Standard_D64-16s_v3",
-                    "count": 1.0
+                    "count": 0.0
                 }, {
                     "vmSize": "Standard_D64-32s_v3",
-                    "count": 1.0
+                    "count": 0.0
                 }, {
                     "vmSize": "Standard_D64s_v3",
-                    "count": 1.0
+                    "count": 0.0
                 }]
             },
             "statuses": [{

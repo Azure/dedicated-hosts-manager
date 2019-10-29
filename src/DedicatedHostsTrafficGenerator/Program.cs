@@ -14,6 +14,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DedicatedHostsTrafficGenerator
@@ -39,6 +40,7 @@ namespace DedicatedHostsTrafficGenerator
             var clientId = config["ClientId"];
             var clientSecret = config["FairfaxClientSecret"];
             var subscriptionId = config["SubscriptionId"];
+            var hostGroupName = config["HostGroupName"];
 
             var token = await TokenHelper.GetToken(
                 authEndpoint,
@@ -50,10 +52,10 @@ namespace DedicatedHostsTrafficGenerator
                 new TokenCredentials(token),
                 new TokenCredentials(token),
                 tenantId,
-                AzureEnvironment.AzureUSGovernment);
+                AzureEnvironment.FromName(config["CloudName"]));
             var client = RestClient
                 .Configure()
-                .WithEnvironment(AzureEnvironment.AzureUSGovernment)
+                .WithEnvironment(AzureEnvironment.FromName(config["CloudName"]))
                 .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
                 .WithCredentials(customTokenProvider)
                 .Build();
@@ -62,9 +64,24 @@ namespace DedicatedHostsTrafficGenerator
             var computeManagementClient = new ComputeManagementClient(customTokenProvider)
             {
                 SubscriptionId = subscriptionId,
-                BaseUri = new Uri("https://management.usgovcloudapi.net/"),
+                BaseUri = new Uri(config["ResourceManagerUri"]),
                 LongRunningOperationRetryTimeout = 5
             };
+
+            //var vmInfo = await computeManagementClient.VirtualMachines.GetAsync("demo-rg6", "vm0-4131", InstanceViewTypes.InstanceView);
+            //var hostInfo = await computeManagementClient.DedicatedHosts.GetAsync("demo-rg6", "citrix-dhg", "host-201", InstanceViewTypes.InstanceView);
+
+            //var foo = computeManagementClient.VirtualMachines.Get("mdewan-citrix-test2", "vm0-9350");
+            //var dhgInfo = await computeManagementClient.DedicatedHostGroups.GetAsync("mdewan-citrix-test3", "citrix-dhg");
+            //var hosts = await computeManagementClient.DedicatedHosts.ListByHostGroupAsync("mdewan-citrix-test5", dhgInfo.Id);
+            //var dedicatedHostDetails = await computeManagementClient.DedicatedHosts.GetAsync(
+            //    "mdewan-citrix-test6",
+            //    "citrix-dhg",
+            //    "host-523",
+            //    InstanceViewTypes.InstanceView,
+            //    default(CancellationToken));
+
+            //var virtualMachineList = dedicatedHostDetails?.InstanceView?.AvailableCapacity?.AllocatableVMs?.ToList();
 
             var resourceGroup = azure.ResourceGroups.Define(resourceGroupName)
                 .WithRegion(location)
@@ -78,7 +95,7 @@ namespace DedicatedHostsTrafficGenerator
 
             await computeManagementClient.DedicatedHostGroups.CreateOrUpdateAsync(
                 resourceGroupName,
-                "citrix-dhg",
+                hostGroupName,
                 newDedicatedHostGroup);
 
             var taskList = new List<Task<HttpResponseMessage>>();
@@ -98,8 +115,39 @@ namespace DedicatedHostsTrafficGenerator
                     "adh-poc-vnet",
                     "nic-" + Guid.NewGuid());
 
+                var deleteVmUri =
+                    $"http://localhost:7071/api/DeleteVm" +
+                    $"?token={token}" +
+                    $"&cloudName=AzureUSGovernment" +
+                    $"&tenantId={tenantId}" +
+                    $"&subscriptionId={subscriptionId}" +
+                    $"&resourceGroup={resourceGroupName}" +
+                    $"&location={location}" +
+                    $"&vmSku={virtualMachineSize}" +
+                    $"&vmName=vm0-3217" +
+                    $"&dedicatedHostGroupName={hostGroupName}" +
+                    $"&platformFaultDomainCount=1";
+
+                var deleteResponse = await HttpClient.GetAsync(deleteVmUri);
+                var deleteBody = await deleteResponse.Content.ReadAsStringAsync();
+
+#if DEBUG
                 var createVmUri =
-                    $"https://adh.azurewebsites.us/api/CreateVm?code=a7xadlDU/qH/7R1w5mza4lwTbZnLBZf6uSFBCh31URy2tg3WIEDr3A==" +
+                    $"http://localhost:7071/api/CreateVm" +
+                    $"?token={token}" +
+                    $"&cloudName=AzureUSGovernment" +
+                    $"&tenantId={tenantId}" +
+                    $"&subscriptionId={subscriptionId}" +
+                    $"&resourceGroup={resourceGroupName}" +
+                    $"&location={location}" +
+                    $"&vmSku={virtualMachineSize}" +
+                    $"&vmName={vmName}" +
+                    $"&dedicatedHostGroupName={hostGroupName}" +
+                    $"&platformFaultDomainCount=1";
+#else
+
+                var createVmUri =
+                    _configuration["DhmFunctionUri"] +
                     $"&token={token}" +
                     $"&cloudName=AzureUSGovernment" +
                     $"&tenantId={tenantId}" +
@@ -108,8 +156,9 @@ namespace DedicatedHostsTrafficGenerator
                     $"&location={location}" +
                     $"&vmSku={virtualMachineSize}" +
                     $"&vmName={vmName}" +
+                    $"&dedicatedHostGroupName={hostGroupName}" +
                     $"&platformFaultDomainCount=1";
-
+#endif
                 var httpContent = new StringContent(JsonConvert.SerializeObject(virtualMachine), Encoding.UTF8, "application/json");
                 inputDictionary[createVmUri] = httpContent;                
             }
@@ -120,32 +169,33 @@ namespace DedicatedHostsTrafficGenerator
             }
 
             var results = await Task.WhenAll(taskList);
-            var outputDictionary = new Dictionary<string, string>();
-            foreach (var result in results)
-            {
-                outputDictionary[result.RequestMessage.RequestUri.ToString()] =
-                    await result.Content.ReadAsStringAsync();
-            }
 
-            // list all virtual machines in a RG
-            var vmList = new List<VirtualMachine>();
-            var vmListResponse = await computeManagementClient.VirtualMachines.ListAllAsync();
-            vmList.AddRange(vmListResponse.ToList());
-            var nextLink = vmListResponse.NextPageLink;
+            //var outputDictionary = new Dictionary<string, string>();
+            //foreach (var result in results)
+            //{
+            //    outputDictionary[result.RequestMessage.RequestUri.ToString()] =
+            //        await result.Content.ReadAsStringAsync();
+            //}
 
-            // TODO: fortify?
-            while (!string.IsNullOrEmpty(nextLink))
-            {
-                vmListResponse = await computeManagementClient.VirtualMachines.ListAllNextAsync(nextLink);
-                vmList.AddRange(vmListResponse.ToList());
-                nextLink = vmListResponse.NextPageLink;
-            }
+            //// list all virtual machines in a RG
+            //var vmList = new List<VirtualMachine>();
+            //var vmListResponse = await computeManagementClient.VirtualMachines.ListAllAsync();
+            //vmList.AddRange(vmListResponse.ToList());
+            //var nextLink = vmListResponse.NextPageLink;
 
-            var vmGroups = vmList.GroupBy(v => v.ProvisioningState);
-            foreach (var v in vmGroups)
-            {
-                Console.WriteLine($"Provisioning state: {v.Key}, VM Count: {v.Count()}");
-            }
+            //// TODO: fortify?
+            //while (!string.IsNullOrEmpty(nextLink))
+            //{
+            //    vmListResponse = await computeManagementClient.VirtualMachines.ListAllNextAsync(nextLink);
+            //    vmList.AddRange(vmListResponse.ToList());
+            //    nextLink = vmListResponse.NextPageLink;
+            //}
+
+            //var vmGroups = vmList.GroupBy(v => v.ProvisioningState);
+            //foreach (var v in vmGroups)
+            //{
+            //    Console.WriteLine($"Provisioning state: {v.Key}, VM Count: {v.Count()}");
+            //}
         }
     }
 }

@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.Azure.Management.Compute.Models;
+﻿using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Rest.Azure;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
-namespace DedicatedHostsManager
+namespace DedicatedHostsManager.DedicatedHostEngine
 {
     public interface IDedicatedHostEngine
     {
@@ -30,7 +30,7 @@ namespace DedicatedHostsManager
             string dhSku,
             string location);
 
-        Task<AzureOperationResponse<VirtualMachine>> CreateVmOnDedicatedHost(
+        Task<VirtualMachine> CreateVmOnDedicatedHost(
             string token,
             string cloudName,
             string tenantId,
@@ -53,35 +53,19 @@ namespace DedicatedHostsManager
             string vmName,
             string location);
 
-        Task<IList<DedicatedHost>> ListDedicatedHosts(
-            string token,
-            string cloudName,
-            string tenantId,
-            string subscriptionId,
-            string resourceGroup,
-            string hostGroupName);
-
         Task<IList<DedicatedHostGroup>> ListDedicatedHostGroups(
             string token,
             string cloudName,
             string tenantId,
             string subscriptionId);
 
-        Task<IAzureOperationResponse> DeleteDedicatedHostGroup(
+        Task DeleteVmOnDedicatedHost(
             string token,
             string cloudName,
             string tenantId,
             string subscriptionId,
             string resourceGroup,
-            string hostGroupName);
-
-        Task<IAzureOperationResponse> DeleteDedicatedHostGroup(
-            string token,
-            string cloudName,
-            string tenantId,
-            string subscriptionId,
-            string resourceGroup,
-            string hostGroupName,
-            string dhName);
+            string dedicatedHostGroup,
+            string vmName);
     }
 }

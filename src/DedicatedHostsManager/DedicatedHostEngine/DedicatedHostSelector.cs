@@ -1,29 +1,34 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using DedicatedHostsManager.Helpers;
+﻿using DedicatedHostsManager.ComputeClient;
+using DedicatedHostsManager.DedicatedHostStateManager;
 using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Extensions.Logging;
 using Microsoft.Rest;
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace DedicatedHostsManager
+namespace DedicatedHostsManager.DedicatedHostEngine
 {
-    /// <summary>
-    /// 
-    /// </summary>
     public class DedicatedHostSelector : IDedicatedHostSelector
     {
         private readonly ILogger<DedicatedHostSelector> _logger;
+        private readonly IDedicatedHostStateManager _dedicatedHostStateManager;
+        private readonly IDhmComputeClient _dhmComputeClient;
 
-        public DedicatedHostSelector(ILogger<DedicatedHostSelector> logger)
+        public DedicatedHostSelector(
+            ILogger<DedicatedHostSelector> logger, 
+            IDedicatedHostStateManager dedicatedHostStateManager,
+            IDhmComputeClient dhmComputeClient)
         {
             _logger = logger;
+            _dedicatedHostStateManager = dedicatedHostStateManager;
+            _dhmComputeClient = dhmComputeClient;
         }
 
         public async Task<string> SelectDedicatedHost(
@@ -33,8 +38,7 @@ namespace DedicatedHostsManager
             string subscriptionId,
             string resourceGroup,
             string hostGroupName,
-            string requiredVmSize,
-            IList<DedicatedHost> dedicatedHostList)
+            string requiredVmSize)
         {
             if (string.IsNullOrEmpty(token))
             {
@@ -66,9 +70,20 @@ namespace DedicatedHostsManager
                 throw new ArgumentException(nameof(hostGroupName));
             }
 
-            if (dedicatedHostList == null)
+            var dedicatedHostList = await ListDedicatedHosts(
+                token,
+                cloudName,
+                tenantId,
+                subscriptionId,
+                resourceGroup,
+                hostGroupName);
+            var prunedDedicatedHostList = dedicatedHostList
+                .Where(h => !_dedicatedHostStateManager.IsHostAtCapacity(h.Id.ToLower()) 
+                            && !_dedicatedHostStateManager.IsHostMarkedForDeletion(h.Id.ToLower()))
+                .ToList();
+            if (!prunedDedicatedHostList.Any())
             {
-                throw new ArgumentException(nameof(dedicatedHostList));
+                return null;
             }
 
             var hostToAvailableVmMapping = new ConcurrentDictionary<DedicatedHost, List<DedicatedHostAllocatableVM>>();
@@ -103,7 +118,7 @@ namespace DedicatedHostsManager
             return matchingHosts[randomHost].Id;
         }
 
-        public async Task GetAllocatableVmsOnHost(
+        public virtual async Task GetAllocatableVmsOnHost(
             string token,
             string cloudName,
             string tenantId,
@@ -133,15 +148,16 @@ namespace DedicatedHostsManager
                 new TokenCredentials(token),
                 tenantId,
                 AzureEnvironment.FromName(cloudName));
-
-            var computeManagementClient = ComputeManagementClient(subscriptionId, azureCredentials);
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                AzureEnvironment.FromName(cloudName));
             var dedicatedHostDetails = await computeManagementClient.DedicatedHosts.GetAsync(
                 resourceGroup,
                 hostGroupName,
                 dedicatedHost.Name,
                 InstanceViewTypes.InstanceView,
                 default(CancellationToken));
-
             var virtualMachineList = dedicatedHostDetails?.InstanceView?.AvailableCapacity?.AllocatableVMs?.ToList();
             if (virtualMachineList == null)
             {
@@ -152,12 +168,50 @@ namespace DedicatedHostsManager
             dictionary[dedicatedHost] = virtualMachineList;
         }
 
-        protected virtual IComputeManagementClient ComputeManagementClient(
+        public virtual async Task<IList<DedicatedHost>> ListDedicatedHosts(
+            string token,
+            string cloudName,
+            string tenantId,
             string subscriptionId,
-            AzureCredentials azureCredentials)
+            string resourceGroup,
+            string hostGroupName)
         {
-            var computeManagementClient = DedicatedHostHelpers.ComputeManagementClient(subscriptionId, azureCredentials);
-            return computeManagementClient;
+            if (string.IsNullOrEmpty(token))
+            {
+                throw new ArgumentNullException(nameof(token));
+            }
+
+            if (string.IsNullOrEmpty(cloudName))
+            {
+                throw new ArgumentNullException(nameof(cloudName));
+            }
+
+            if (string.IsNullOrEmpty(tenantId))
+            {
+                throw new ArgumentNullException(nameof(tenantId));
+            }
+
+            var azureCredentials = new AzureCredentials(
+                new TokenCredentials(token),
+                new TokenCredentials(token),
+                tenantId,
+                AzureEnvironment.FromName(cloudName));
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                AzureEnvironment.FromName(cloudName));
+            var dedicatedHostList = new List<DedicatedHost>();
+            var dedicatedHostResponse = await computeManagementClient.DedicatedHosts.ListByHostGroupAsync(resourceGroup, hostGroupName);
+            dedicatedHostList.AddRange(dedicatedHostResponse.ToList());
+            var nextLink = dedicatedHostResponse.NextPageLink;
+            while (!string.IsNullOrEmpty(nextLink))
+            {
+                dedicatedHostResponse = await computeManagementClient.DedicatedHosts.ListByHostGroupNextAsync(nextLink);
+                dedicatedHostList.AddRange(dedicatedHostList.ToList());
+                nextLink = dedicatedHostResponse.NextPageLink;
+            }
+
+            return dedicatedHostList;
         }
     }
 }

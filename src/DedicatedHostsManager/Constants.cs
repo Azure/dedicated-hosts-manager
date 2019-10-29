@@ -7,7 +7,7 @@
         public const string TenantId = "tenantId";
         public const string SubscriptionId = "subscriptionId";
         public const string ResourceGroup = "resourceGroup";
-        public const string DedicatedHostGroupName = "citrix-dhg";
+        public const string DedicatedHostGroupName = "dedicatedHostGroupName";
         public const string DedicatedHostName = "dhName";
         public const string DedicatedHostSku = "dhSku";
         public const string VmSku = "vmSku";

@@ -38,7 +38,7 @@ namespace TrafficGeneratorFunction
             _configuration = configuration;
         }
 
-        [FunctionName("TestHostManager")]
+        [FunctionName("TestDedicatedHostManager")]
         public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
@@ -88,10 +88,10 @@ namespace TrafficGeneratorFunction
                 new TokenCredentials(token),
                 new TokenCredentials(token),
                 tenantId,
-                AzureEnvironment.AzureUSGovernment);
+                AzureEnvironment.FromName(_configuration["CloudName"]));
             var client = RestClient
                 .Configure()
-                .WithEnvironment(AzureEnvironment.AzureUSGovernment)
+                .WithEnvironment(AzureEnvironment.FromName(_configuration["CloudName"]))
                 .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
                 .WithCredentials(customTokenProvider)
                 .Build();
@@ -100,9 +100,10 @@ namespace TrafficGeneratorFunction
             var computeManagementClient = new ComputeManagementClient(customTokenProvider)
             {
                 SubscriptionId = subscriptionId,
-                BaseUri = new Uri("https://management.usgovcloudapi.net/"),
+                BaseUri = new Uri(_configuration["ResourceManagerUri"]),
                 LongRunningOperationRetryTimeout = 5
-            };
+            };           
+
             log.LogInformation($"Creating resource group ({resourceGroupName}), if needed");
             var resourceGroup = azure.ResourceGroups.Define(resourceGroupName)
                 .WithRegion(location)
@@ -137,18 +138,33 @@ namespace TrafficGeneratorFunction
                     "adh-poc-vnet",
                     "nic-" + Guid.NewGuid());
 
+#if DEBUG
                 var createVmUri =
-                    $"https://adh.azurewebsites.us/api/CreateVm?code=a7xadlDU/qH/7R1w5mza4lwTbZnLBZf6uSFBCh31URy2tg3WIEDr3A==" +
-                    $"&token={token}" +
-                    $"&cloudName=AzureUSGovernment" +
+                    $"http://localhost:7071/api/CreateVm" +
+                    $"?token={token}" +
+                    $"&cloudName={_configuration["CloudName"]}" +
                     $"&tenantId={tenantId}" +
                     $"&subscriptionId={subscriptionId}" +
                     $"&resourceGroup={resourceGroupName}" +
                     $"&location={location}" +
                     $"&vmSku={virtualMachineSize}" +
                     $"&vmName={vmName}" +
+                    $"&dedicatedHostGroupName={hostGroupName}" +
                     $"&platformFaultDomainCount=1";
-
+#else
+                var createVmUri =
+                    _configuration["DhmFunctionUri"] +
+                    $"&token={token}" +
+                    $"&cloudName={_configuration["CloudName"]}" +
+                    $"&tenantId={tenantId}" +
+                    $"&subscriptionId={subscriptionId}" +
+                    $"&resourceGroup={resourceGroupName}" +
+                    $"&location={location}" +
+                    $"&vmSku={virtualMachineSize}" +
+                    $"&vmName={vmName}" +
+                    $"&dedicatedHostGroupName={hostGroupName}" +
+                    $"&platformFaultDomainCount=1";
+#endif
                 var httpContent = new StringContent(JsonConvert.SerializeObject(virtualMachine), Encoding.UTF8, "application/json");
                 inputDictionary[createVmUri] = httpContent;
             }
@@ -157,7 +173,8 @@ namespace TrafficGeneratorFunction
             {
                 taskList.Add(_httpClient.PostAsync(item.Key, item.Value));
             }
-            
+
+            await Task.WhenAll(taskList);
             return new OkObjectResult($"VM provisioning kicked off successfully for {numVirtualMachines} VMs - exiting.");
         }
     }
