@@ -149,6 +149,7 @@ namespace TrafficGeneratorFunction
                     $"&location={location}" +
                     $"&vmSku={virtualMachineSize}" +
                     $"&vmName={vmName}" +
+                    $"&dedicatedHostGroupName={hostGroupName}" +
                     $"&platformFaultDomainCount=1";
 #else
                 var createVmUri =
@@ -161,6 +162,7 @@ namespace TrafficGeneratorFunction
                     $"&location={location}" +
                     $"&vmSku={virtualMachineSize}" +
                     $"&vmName={vmName}" +
+                    $"&dedicatedHostGroupName={hostGroupName}" +
                     $"&platformFaultDomainCount=1";
 #endif
                 var httpContent = new StringContent(JsonConvert.SerializeObject(virtualMachine), Encoding.UTF8, "application/json");
