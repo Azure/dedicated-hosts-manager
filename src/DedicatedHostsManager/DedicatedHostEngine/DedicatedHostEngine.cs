@@ -326,7 +326,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                         vmName,
                         region.Name);
 
-                    _dedicatedHostStateManager.MarkHostUsage(virtualMachine.Host.Id.ToLower(), DateTimeOffset.Now.ToString(), TimeSpan.FromMinutes(dedicatedHostCacheTtlMin)); 
+                    _dedicatedHostStateManager.MarkHostUsage(dedicatedHostId.ToLower(), DateTimeOffset.Now.ToString(), TimeSpan.FromMinutes(dedicatedHostCacheTtlMin)); 
                     virtualMachine.Host = new SubResource(dedicatedHostId);
                     try
                     {
@@ -714,9 +714,10 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 .ExecuteAsync(async () =>
                     {
                         virtualMachine = await computeManagementClient.VirtualMachines.GetAsync(resourceGroup, vmName);
-                        hostId = virtualMachine?.Host?.Id?.Split(new[] {'/'}).Last();
+                        hostId = virtualMachine?.Host?.Id;
+                        var hostName = hostId?.Split(new[] {'/'}).Last();
                         await computeManagementClient.VirtualMachines.DeleteAsync(resourceGroup, vmName);
-                        dedicatedHost = await computeManagementClient.DedicatedHosts.GetAsync(resourceGroup, dedicatedHostGroup, hostId, InstanceViewTypes.InstanceView);
+                        dedicatedHost = await computeManagementClient.DedicatedHosts.GetAsync(resourceGroup, dedicatedHostGroup, hostName, InstanceViewTypes.InstanceView);
                     });
 
             if (string.IsNullOrEmpty(hostId))

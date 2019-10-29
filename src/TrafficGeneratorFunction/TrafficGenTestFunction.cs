@@ -38,7 +38,7 @@ namespace TrafficGeneratorFunction
             _configuration = configuration;
         }
 
-        [FunctionName("TestHostManager")]
+        [FunctionName("TestDedicatedHostManager")]
         public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
@@ -142,7 +142,7 @@ namespace TrafficGeneratorFunction
                 var createVmUri =
                     $"http://localhost:7071/api/CreateVm" +
                     $"?token={token}" +
-                    $"&cloudName=AzureUSGovernment" +
+                    $"&cloudName={_configuration["CloudName"]}" +
                     $"&tenantId={tenantId}" +
                     $"&subscriptionId={subscriptionId}" +
                     $"&resourceGroup={resourceGroupName}" +
@@ -154,7 +154,7 @@ namespace TrafficGeneratorFunction
                 var createVmUri =
                     _configuration["DhmFunctionUri"] +
                     $"&token={token}" +
-                    $"&cloudName=AzureUSGovernment" +
+                    $"&cloudName={_configuration["CloudName"]}" +
                     $"&tenantId={tenantId}" +
                     $"&subscriptionId={subscriptionId}" +
                     $"&resourceGroup={resourceGroupName}" +
@@ -171,7 +171,8 @@ namespace TrafficGeneratorFunction
             {
                 taskList.Add(_httpClient.PostAsync(item.Key, item.Value));
             }
-            
+
+            await Task.WhenAll(taskList);
             return new OkObjectResult($"VM provisioning kicked off successfully for {numVirtualMachines} VMs - exiting.");
         }
     }

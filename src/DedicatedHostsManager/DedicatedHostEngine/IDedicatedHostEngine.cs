@@ -58,5 +58,14 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             string cloudName,
             string tenantId,
             string subscriptionId);
+
+        Task DeleteVmOnDedicatedHost(
+            string token,
+            string cloudName,
+            string tenantId,
+            string subscriptionId,
+            string resourceGroup,
+            string dedicatedHostGroup,
+            string vmName);
     }
 }

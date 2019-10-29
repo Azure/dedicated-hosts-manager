@@ -62,6 +62,12 @@ namespace DedicatedHostsManager
                 return new BadRequestObjectResult("Resource group was missing in the query parameters.");
             }
 
+            if (!parameters.ContainsKey(Constants.DedicatedHostGroupName) ||
+                string.IsNullOrEmpty(parameters[Constants.DedicatedHostGroupName]))
+            {
+                return new BadRequestObjectResult("Dedicated host group was missing in the query parameters.");
+            }
+
             if (!parameters.ContainsKey(Constants.Location) || string.IsNullOrEmpty(parameters[Constants.Location]))
             {
                 return new BadRequestObjectResult("Location was missing in the query parameters.");
@@ -96,7 +102,7 @@ namespace DedicatedHostsManager
                     parameters[Constants.TenantId],
                     parameters[Constants.SubscriptionId],
                     parameters[Constants.ResourceGroup],
-                    Constants.DedicatedHostGroupName,
+                    parameters[Constants.DedicatedHostGroupName],
                     parameters[Constants.VmSku],
                     parameters[Constants.VmName],
                     Region.Create(parameters[Constants.Location]),
@@ -153,6 +159,12 @@ namespace DedicatedHostsManager
                 return new BadRequestObjectResult("Resource group was missing in the query parameters.");
             }
 
+            if (!parameters.ContainsKey(Constants.DedicatedHostGroupName) ||
+                string.IsNullOrEmpty(parameters[Constants.DedicatedHostGroupName]))
+            {
+                return new BadRequestObjectResult("Dedicated host group was missing in the query parameters.");
+            }
+
             if (!parameters.ContainsKey(Constants.VmName) || string.IsNullOrEmpty(parameters[Constants.VmName]))
             {
                 return new BadRequestObjectResult("VmName was missing in the query parameters.");
@@ -161,26 +173,20 @@ namespace DedicatedHostsManager
             var sw = Stopwatch.StartNew();
             try
             {
-                var requestBody = await req.ReadAsStringAsync();
-                var virtualMachine = JsonConvert.DeserializeObject<VirtualMachine>(requestBody);
-
-                var deleteVmResponse = await _dedicatedHostEngine.CreateVmOnDedicatedHost(
+                await _dedicatedHostEngine.DeleteVmOnDedicatedHost(
                     parameters[Constants.Token],
                     parameters[Constants.CloudName],
                     parameters[Constants.TenantId],
                     parameters[Constants.SubscriptionId],
                     parameters[Constants.ResourceGroup],
-                    Constants.DedicatedHostGroupName,
-                    parameters[Constants.VmSku],
-                    parameters[Constants.VmName],
-                    Region.Create(parameters[Constants.Location]),
-                    virtualMachine);
+                    parameters[Constants.DedicatedHostGroupName],
+                    parameters[Constants.VmName]);
 
                 log.LogInformation(
                     $"DeleteVm: Took {sw.Elapsed.TotalSeconds}s to delete {parameters[Constants.VmName]}");
                 log.LogMetric("VmDeletionTimeSecondsMetric", sw.Elapsed.TotalSeconds);
                 log.LogMetric("VmDeletionSuccessCountMetric", 1);
-                return new OkObjectResult(deleteVmResponse);
+                return new OkObjectResult($"Deleted {parameters[Constants.VmName]}.");
             }
             catch (Exception exception)
             {
