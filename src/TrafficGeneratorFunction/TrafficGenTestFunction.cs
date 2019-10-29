@@ -88,10 +88,10 @@ namespace TrafficGeneratorFunction
                 new TokenCredentials(token),
                 new TokenCredentials(token),
                 tenantId,
-                AzureEnvironment.AzureUSGovernment);
+                AzureEnvironment.FromName(_configuration["CloudName"]));
             var client = RestClient
                 .Configure()
-                .WithEnvironment(AzureEnvironment.AzureUSGovernment)
+                .WithEnvironment(AzureEnvironment.FromName(_configuration["CloudName"]))
                 .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
                 .WithCredentials(customTokenProvider)
                 .Build();
@@ -102,7 +102,8 @@ namespace TrafficGeneratorFunction
                 SubscriptionId = subscriptionId,
                 BaseUri = new Uri(_configuration["ResourceManagerUri"]),
                 LongRunningOperationRetryTimeout = 5
-            };
+            };           
+
             log.LogInformation($"Creating resource group ({resourceGroupName}), if needed");
             var resourceGroup = azure.ResourceGroups.Define(resourceGroupName)
                 .WithRegion(location)

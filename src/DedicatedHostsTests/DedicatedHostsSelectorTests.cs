@@ -1,6 +1,6 @@
-﻿using DedicatedHostsManager.Cache;
-using DedicatedHostsManager.ComputeClient;
+﻿using DedicatedHostsManager.ComputeClient;
 using DedicatedHostsManager.DedicatedHostEngine;
+using DedicatedHostsManager.DedicatedHostStateManager;
 using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
@@ -34,9 +34,9 @@ namespace DedicatedHostsManagerTests
         {
             const string expectedHostId = "/subscriptions/6e412d70-9128-48a7-97b4-04e5bd35cefc/resourceGroups/63296244-ce2c-46d8-bc36-3e558792fbee/providers/Microsoft.Compute/hostGroups/citrix-dhg/hosts/20887a6e-0866-4bae-82b7-880839d9e76b";
             var loggerMock = new Mock<ILogger<DedicatedHostSelector>>();
-            var cacheProviderMock = new Mock<ICacheProvider>();
+            var dedicatedHostStateManagerMock = new Mock<IDedicatedHostStateManager>();
             var dhmComputeClientMock = new Mock<IDhmComputeClient>();
-            cacheProviderMock.Setup(s => s.KeyExists(It.IsAny<string>())).Returns(false);
+            dedicatedHostStateManagerMock.Setup(s => s.IsHostAtCapacity(It.IsAny<string>())).Returns(false);
             var dedicatedHostList =
                 JsonConvert.DeserializeObject<List<DedicatedHost>>(
                     File.ReadAllText(@"TestData\dedicatedHostsInput1.json"));
@@ -76,7 +76,7 @@ namespace DedicatedHostsManagerTests
                         It.IsAny<AzureEnvironment>()))
                 .ReturnsAsync(computeManagementClientMock.Object);
 
-            var dedicatedHostSelector = new DedicatedHostSelectorTest(loggerMock.Object, cacheProviderMock.Object, dhmComputeClientMock.Object);
+            var dedicatedHostSelector = new DedicatedHostSelectorTest(loggerMock.Object, dedicatedHostStateManagerMock.Object, dhmComputeClientMock.Object);
             var actualHostId = await dedicatedHostSelector.SelectDedicatedHost(
                 Token,
                 CloudName,
@@ -93,9 +93,9 @@ namespace DedicatedHostsManagerTests
         {
             public DedicatedHostSelectorTest(
                 ILogger<DedicatedHostSelector> logger, 
-                ICacheProvider cacheProvider,
+                IDedicatedHostStateManager dedicatedHostStateManager,
                 IDhmComputeClient dhmComputeClient) 
-                : base(logger, cacheProvider, dhmComputeClient)
+                : base(logger, dedicatedHostStateManager, dhmComputeClient)
             {
             }
 

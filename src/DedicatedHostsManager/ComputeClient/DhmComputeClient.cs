@@ -1,5 +1,4 @@
-﻿using DedicatedHostsManager.Cache;
-using Microsoft.Azure.Management.Compute;
+﻿using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Extensions.Configuration;
@@ -20,11 +19,11 @@ namespace DedicatedHostsManager.ComputeClient
         private static IComputeManagementClient _computeManagementClient;
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
-        private readonly ILogger<CacheProvider> _logger;
+        private readonly ILogger<DedicatedHostStateManager.DedicatedHostStateManager> _logger;
 
         public DhmComputeClient(
             IConfiguration configuration, 
-            ILogger<CacheProvider> logger,
+            ILogger<DedicatedHostStateManager.DedicatedHostStateManager> logger,
             IHttpClientFactory httpClientFactory)
         {
             _configuration = configuration;
@@ -50,15 +49,16 @@ namespace DedicatedHostsManager.ComputeClient
 
         private async Task<Uri> GetResourceManagerEndpoint(AzureEnvironment azureEnvironment)
         {
+            var armMetadataRetryCount = int.Parse(_configuration["GetArmMetadataRetryCount"]);
             HttpResponseMessage armResponseMessage = null;
             await Policy
                 .Handle<HttpRequestException>()
                 .WaitAndRetryAsync(
-                    int.Parse(_configuration["GetArmMetadataRetryCount"]), 
+                    armMetadataRetryCount, 
                     r => TimeSpan.FromSeconds(2 * r),
                     (ex, ts, r) =>
                         _logger.LogInformation(
-                            $"Could not retrieve ARM metadata. Attempt #{r}/3. Will try again in {ts.TotalSeconds} seconds. Exception={ex}"))
+                            $"Could not retrieve ARM metadata. Attempt #{r}/{armMetadataRetryCount}. Will try again in {ts.TotalSeconds} seconds. Exception={ex}"))
                 .ExecuteAsync(async () =>
                     {
                         armResponseMessage = await _httpClient.GetAsync(_configuration["GetArmMetadataUrl"]);

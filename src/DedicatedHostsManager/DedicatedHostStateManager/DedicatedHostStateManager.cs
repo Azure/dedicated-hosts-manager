@@ -1,25 +1,29 @@
-﻿using System;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
+using System;
 
-namespace DedicatedHostsManager.Cache
+namespace DedicatedHostsManager.DedicatedHostStateManager
 {
-    public class CacheProvider : ICacheProvider
+    public class DedicatedHostStateManager : IDedicatedHostStateManager
     {
         private static readonly object LockObject = new object();
         private readonly IConfiguration _configuration;
-        private readonly ILogger<CacheProvider> _logger;
-        private readonly int _dbIndex = 0;
+        private readonly ILogger<DedicatedHostStateManager> _logger;
+        private readonly int _hostCapacityDbIndex;
+        private readonly int _hostDeletionDbIndex;
+        private readonly int _hostUsageDbIndex;
         private readonly string _redisCacheConnection;
         private ConnectionMultiplexer _connectionMultiplexer;
 
-        public CacheProvider(IConfiguration configuration, ILogger<CacheProvider> logger)
+        public DedicatedHostStateManager(IConfiguration configuration, ILogger<DedicatedHostStateManager> logger)
         {
             _configuration = configuration;
             _logger = logger;
             _redisCacheConnection = _configuration.GetConnectionString("RedisConnectionString");
-            _dbIndex = 0;
+            _hostCapacityDbIndex = 0;
+            _hostDeletionDbIndex = 1;
+            _hostUsageDbIndex = 2;
         }
        
         public ConnectionMultiplexer ConnectionMultiplexer
@@ -52,19 +56,44 @@ namespace DedicatedHostsManager.Cache
             }
         }
 
-        public bool AddData(string key, string data, TimeSpan? expiry = null)
+        public bool MarkHostAtCapacity(string key, string data, TimeSpan? expiry = null)
         {
-            return this.ConnectionMultiplexer.GetDatabase(_dbIndex).StringSet(key, data, expiry);
+            return this.ConnectionMultiplexer.GetDatabase(_hostCapacityDbIndex).StringSet(key, data, expiry);
         }
 
-        public bool KeyExists(string key)
+        public bool IsHostAtCapacity(string key)
         {
-            return ConnectionMultiplexer.GetDatabase(_dbIndex).KeyExists(key);
+            return ConnectionMultiplexer.GetDatabase(_hostCapacityDbIndex).KeyExists(key);
         }
 
-        public void DeleteKey(string key)
+        public bool MarkHostForDeletion(string key, string data, TimeSpan? expiry = null)
         {
-            ConnectionMultiplexer.GetDatabase(_dbIndex).KeyDelete(key);
+            return this.ConnectionMultiplexer.GetDatabase(_hostDeletionDbIndex).StringSet(key, data, expiry);
+        }
+
+        public bool IsHostMarkedForDeletion(string key)
+        {
+            return ConnectionMultiplexer.GetDatabase(_hostDeletionDbIndex).KeyExists(key);
+        }
+
+        public bool MarkHostUsage(string key, string data, TimeSpan? expiry = null)
+        {
+            return this.ConnectionMultiplexer.GetDatabase(_hostUsageDbIndex).StringSet(key, data, expiry);
+        }
+
+        public bool IsHostInUsage(string key)
+        {
+            return ConnectionMultiplexer.GetDatabase(_hostUsageDbIndex).KeyExists(key);
+        }
+
+        public void UnmarkHostUsage(string key)
+        {
+            DeleteKey(key, _hostUsageDbIndex);
+        }
+
+        private void DeleteKey(string key, int dbIndex)
+        {
+            ConnectionMultiplexer.GetDatabase(dbIndex).KeyDelete(key);
         }
 
         public void Dispose()

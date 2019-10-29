@@ -1,8 +1,10 @@
-using DedicatedHostsManager.Cache;
+using DedicatedHostsManager.ComputeClient;
 using DedicatedHostsManager.DedicatedHostEngine;
+using DedicatedHostsManager.DedicatedHostStateManager;
 using DedicatedHostsManager.Sync;
 using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
+using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -13,8 +15,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using DedicatedHostsManager.ComputeClient;
-using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Xunit;
 using DedicatedHostGroup = Microsoft.Azure.Management.Compute.Models.DedicatedHostGroup;
 
@@ -43,7 +43,7 @@ namespace DedicatedHostsManagerTests
             configurationMock.Setup(s => s["DhgCreateRetryCount"]).Returns("1");
             var dedicatedHostSelectorMock = new Mock<IDedicatedHostSelector>();
             var syncProviderMock = new Mock<ISyncProvider>();
-            var cacheProviderMock = new Mock<ICacheProvider>();
+            var dedicatedHostStateManagerMock = new Mock<IDedicatedHostStateManager>();
             var dhmComputeClientMock = new Mock<IDhmComputeClient>();
             var computeManagementClientMock = new Mock<IComputeManagementClient>();
 
@@ -72,7 +72,7 @@ namespace DedicatedHostsManagerTests
                 configurationMock.Object,
                 dedicatedHostSelectorMock.Object,
                 syncProviderMock.Object,
-                cacheProviderMock.Object,
+                dedicatedHostStateManagerMock.Object,
                 dhmComputeClientMock.Object);
             var createDedicatedHostGroupResponse = await dedicatedHostEngineTest.CreateDedicatedHostGroup(
                 Token,
@@ -97,7 +97,7 @@ namespace DedicatedHostsManagerTests
             var configurationMock = new Mock<IConfiguration>();
             var dedicatedHostSelectorMock = new Mock<IDedicatedHostSelector>();
             var syncProviderMock = new Mock<ISyncProvider>();
-            var cacheProviderMock = new Mock<ICacheProvider>();
+            var dedicatedHostStateManagerMock = new Mock<IDedicatedHostStateManager>();
             var dhmComputeClientMock = new Mock<IDhmComputeClient>();
             var computeManagementClientMock = new Mock<IComputeManagementClient>();
             var mockDhg = new DedicatedHostGroup(Location, PlatformFaultDomainCount, null, HostGroupName);
@@ -128,7 +128,7 @@ namespace DedicatedHostsManagerTests
                 .Setup(
                     s => s.ListDedicatedHosts(Token, CloudName, TenantId, SubscriptionId, ResourceGroup, HostGroupName))
                 .ReturnsAsync(dedicatedHostList);
-            cacheProviderMock.Setup(s => s.KeyExists(It.IsAny<string>())).Returns(false);
+            dedicatedHostStateManagerMock.Setup(s => s.IsHostAtCapacity(It.IsAny<string>())).Returns(false);
             dedicatedHostSelectorMock
                 .Setup(
                 s => s.SelectDedicatedHost(Token, CloudName, TenantId, SubscriptionId, ResourceGroup, HostGroupName, VmSize))
@@ -139,7 +139,7 @@ namespace DedicatedHostsManagerTests
                 configurationMock.Object,
                 dedicatedHostSelectorMock.Object,
                 syncProviderMock.Object,
-                cacheProviderMock.Object,
+                dedicatedHostStateManagerMock.Object,
                 dhmComputeClientMock.Object);
             var host = await dedicatedHostEngine.GetDedicatedHostForVmPlacement(Token, CloudName, TenantId, SubscriptionId,
                 ResourceGroup, HostGroupName, VmSize, "test-vm", Location);
@@ -154,14 +154,14 @@ namespace DedicatedHostsManagerTests
                 IConfiguration configuration, 
                 IDedicatedHostSelector dedicatedHostSelector, 
                 ISyncProvider syncProvider,
-                ICacheProvider cacheProvider,
+                IDedicatedHostStateManager dedicatedHostStateManager,
                 IDhmComputeClient dhmComputeClient) 
                 : base(
                     logger, 
                     configuration, 
                     dedicatedHostSelector, 
                     syncProvider,
-                    cacheProvider,
+                    dedicatedHostStateManager,
                     dhmComputeClient)
             {
             }

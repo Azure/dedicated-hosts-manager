@@ -1,5 +1,5 @@
-﻿using DedicatedHostsManager.Cache;
-using DedicatedHostsManager.ComputeClient;
+﻿using DedicatedHostsManager.ComputeClient;
+using DedicatedHostsManager.DedicatedHostStateManager;
 using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
@@ -18,16 +18,16 @@ namespace DedicatedHostsManager.DedicatedHostEngine
     public class DedicatedHostSelector : IDedicatedHostSelector
     {
         private readonly ILogger<DedicatedHostSelector> _logger;
-        private readonly ICacheProvider _cacheProvider;
+        private readonly IDedicatedHostStateManager _dedicatedHostStateManager;
         private readonly IDhmComputeClient _dhmComputeClient;
 
         public DedicatedHostSelector(
             ILogger<DedicatedHostSelector> logger, 
-            ICacheProvider cacheProvider,
+            IDedicatedHostStateManager dedicatedHostStateManager,
             IDhmComputeClient dhmComputeClient)
         {
             _logger = logger;
-            _cacheProvider = cacheProvider;
+            _dedicatedHostStateManager = dedicatedHostStateManager;
             _dhmComputeClient = dhmComputeClient;
         }
 
@@ -77,7 +77,10 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 subscriptionId,
                 resourceGroup,
                 hostGroupName);
-            var prunedDedicatedHostList = dedicatedHostList.Where(h => !_cacheProvider.KeyExists(h.Id.ToLower())).ToList();
+            var prunedDedicatedHostList = dedicatedHostList
+                .Where(h => !_dedicatedHostStateManager.IsHostAtCapacity(h.Id.ToLower()) 
+                            && !_dedicatedHostStateManager.IsHostMarkedForDeletion(h.Id.ToLower()))
+                .ToList();
             if (!prunedDedicatedHostList.Any())
             {
                 return null;
