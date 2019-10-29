@@ -40,9 +40,9 @@ namespace DedicatedHostsManager.Cache
 
                     _connectionMultiplexer?.Dispose();
                     var configurationOptions = ConfigurationOptions.Parse(_redisCacheConnection);
-                    configurationOptions.ConnectTimeout = int.Parse(_configuration.GetConnectionString("RedisConnectTimeoutMilliseconds"));
-                    configurationOptions.SyncTimeout = int.Parse(_configuration.GetConnectionString("RedisSyncTimeoutMilliseconds"));
-                    configurationOptions.ConnectRetry = int.Parse(_configuration.GetConnectionString("RedisConnectRetryCount"));
+                    configurationOptions.ConnectTimeout = int.Parse(_configuration["RedisConnectTimeoutMilliseconds"]);
+                    configurationOptions.SyncTimeout = int.Parse(_configuration["RedisSyncTimeoutMilliseconds"]);
+                    configurationOptions.ConnectRetry = int.Parse(_configuration["RedisConnectRetryCount"]);
                     configurationOptions.AbortOnConnectFail = false;
                     configurationOptions.Ssl = true;
                     _connectionMultiplexer = ConnectionMultiplexer.Connect(configurationOptions);

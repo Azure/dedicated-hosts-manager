@@ -7,6 +7,8 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Polly;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -41,8 +43,8 @@ namespace DedicatedHostsManager.ComputeClient
             {
                 SubscriptionId = subscriptionId,
                 BaseUri = baseUri,
-                LongRunningOperationRetryTimeout = int.Parse(_configuration.GetConnectionString("ComputeClientLongRunningOperationRetryTimeoutSeconds")),
-                HttpClient = { Timeout = TimeSpan.FromMinutes(int.Parse(_configuration.GetConnectionString("ComputeClientHttpTimeoutMin"))) }
+                LongRunningOperationRetryTimeout = int.Parse(_configuration["ComputeClientLongRunningOperationRetryTimeoutSeconds"]),
+                HttpClient = { Timeout = TimeSpan.FromMinutes(int.Parse(_configuration["ComputeClientHttpTimeoutMin"])) }
             });
         }
 
@@ -52,15 +54,14 @@ namespace DedicatedHostsManager.ComputeClient
             await Policy
                 .Handle<HttpRequestException>()
                 .WaitAndRetryAsync(
-                    3, // TODO: read from config
+                    int.Parse(_configuration["GetArmMetadataRetryCount"]), 
                     r => TimeSpan.FromSeconds(2 * r),
                     (ex, ts, r) =>
                         _logger.LogInformation(
                             $"Could not retrieve ARM metadata. Attempt #{r}/3. Will try again in {ts.TotalSeconds} seconds. Exception={ex}"))
                 .ExecuteAsync(async () =>
                     {
-                        armResponseMessage = await _httpClient.GetAsync(
-                            "https://management.azure.com/metadata/endpoints?api-version=2019-05-01"); // TODO: read from config
+                        armResponseMessage = await _httpClient.GetAsync(_configuration["GetArmMetadataUrl"]);
                     });
 
             if (armResponseMessage == null || armResponseMessage?.StatusCode != HttpStatusCode.OK)
@@ -74,8 +75,10 @@ namespace DedicatedHostsManager.ComputeClient
                 throw new Exception("Could not read ARM metadata, compute management client cannot be initialized.");
             }
 
-            var armMetadata = JsonConvert.DeserializeObject<ArmMetadata>(armMetadataContent);
-            return new Uri(armMetadata.ResourceManager);
+            var armMetadata = JsonConvert.DeserializeObject<List<ArmMetadata>>(armMetadataContent);
+            return new Uri(armMetadata
+                .First(c => c.Name.Equals(azureEnvironment.Name, StringComparison.InvariantCultureIgnoreCase))
+                .ResourceManager);
         }
     }
 }

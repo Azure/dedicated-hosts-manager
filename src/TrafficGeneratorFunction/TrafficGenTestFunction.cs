@@ -100,7 +100,7 @@ namespace TrafficGeneratorFunction
             var computeManagementClient = new ComputeManagementClient(customTokenProvider)
             {
                 SubscriptionId = subscriptionId,
-                BaseUri = new Uri("https://management.usgovcloudapi.net/"),
+                BaseUri = new Uri(_configuration["ResourceManagerUri"]),
                 LongRunningOperationRetryTimeout = 5
             };
             log.LogInformation($"Creating resource group ({resourceGroupName}), if needed");
@@ -137,8 +137,21 @@ namespace TrafficGeneratorFunction
                     "adh-poc-vnet",
                     "nic-" + Guid.NewGuid());
 
+#if DEBUG
                 var createVmUri =
-                    $"https://adh.azurewebsites.us/api/CreateVm?code=a7xadlDU/qH/7R1w5mza4lwTbZnLBZf6uSFBCh31URy2tg3WIEDr3A==" +
+                    $"http://localhost:7071/api/CreateVm" +
+                    $"?token={token}" +
+                    $"&cloudName=AzureUSGovernment" +
+                    $"&tenantId={tenantId}" +
+                    $"&subscriptionId={subscriptionId}" +
+                    $"&resourceGroup={resourceGroupName}" +
+                    $"&location={location}" +
+                    $"&vmSku={virtualMachineSize}" +
+                    $"&vmName={vmName}" +
+                    $"&platformFaultDomainCount=1";
+#else
+                var createVmUri =
+                    _configuration["DhmFunctionUri"] +
                     $"&token={token}" +
                     $"&cloudName=AzureUSGovernment" +
                     $"&tenantId={tenantId}" +
@@ -148,7 +161,7 @@ namespace TrafficGeneratorFunction
                     $"&vmSku={virtualMachineSize}" +
                     $"&vmName={vmName}" +
                     $"&platformFaultDomainCount=1";
-
+#endif
                 var httpContent = new StringContent(JsonConvert.SerializeObject(virtualMachine), Encoding.UTF8, "application/json");
                 inputDictionary[createVmUri] = httpContent;
             }
