@@ -33,6 +33,7 @@ namespace TrafficGeneratorFunction
         private const string HostGroupName = "hostGroupName";
         private const string VmCount = "vmCount";
         private const string VmSku = "vmSku";
+        private const string VmName = "vmName";
 
         /// <summary>
         /// Initialization.
@@ -52,20 +53,20 @@ namespace TrafficGeneratorFunction
         /// <param name="req">HTTP request.</param>
         /// <param name="log">Logger.</param>
         /// <returns></returns>
-        [FunctionName("TestDedicatedHostManagerVmCreation")]
-        public async Task<IActionResult> Run(
+        [FunctionName("TestDhmConcurrentVmCreation")]
+        public async Task<IActionResult> TestDhmConcurrentVmCreation(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
             var parameters = req.GetQueryParameterDictionary();
             if (!parameters.ContainsKey(ResourceGroupName) || string.IsNullOrEmpty(parameters[ResourceGroupName]))
             {
-                return new BadRequestObjectResult("VmCount was missing in the query parameters.");
+                return new BadRequestObjectResult("Resource group name was missing in the query parameters.");
             }
 
             if (!parameters.ContainsKey(HostGroupName) || string.IsNullOrEmpty(parameters[HostGroupName]))
             {
-                return new BadRequestObjectResult("Vm SKU was missing in the query parameters.");
+                return new BadRequestObjectResult("Host group name was missing in the query parameters.");
             }
 
             if (!parameters.ContainsKey(VmCount) || string.IsNullOrEmpty(parameters[VmCount]))
@@ -75,7 +76,7 @@ namespace TrafficGeneratorFunction
 
             if (!parameters.ContainsKey(VmSku) || string.IsNullOrEmpty(parameters[VmSku]))
             {
-                return new BadRequestObjectResult("Vm SKU was missing in the query parameters.");
+                return new BadRequestObjectResult("VM SKU was missing in the query parameters.");
             }
 
             var authEndpoint = _configuration["AuthEndpoint"];
@@ -167,7 +168,7 @@ namespace TrafficGeneratorFunction
                     $"&platformFaultDomainCount=1";
 #else
                 var createVmUri =
-                    _configuration["DhmFunctionUri"] +
+                    _configuration["DhmCreateVmnUri"] +
                     $"&token={token}" +
                     $"&cloudName={_configuration["CloudName"]}" +
                     $"&tenantId={tenantId}" +
@@ -190,6 +191,99 @@ namespace TrafficGeneratorFunction
 
             await Task.WhenAll(taskList);
             return new OkObjectResult($"VM provisioning kicked off successfully for {numVirtualMachines} VMs - exiting.");
+        }
+
+        /// <summary>
+        /// Test Dedicated Host Manager VM creation.
+        /// </summary>
+        /// <param name="req">HTTP request.</param>
+        /// <param name="log">Logger.</param>
+        /// <returns></returns>
+        [FunctionName("TestDhmVmDeletion")]
+        public async Task<IActionResult> TestDhmConcurrentVmDeletion(
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
+            ILogger log)
+        {
+            var parameters = req.GetQueryParameterDictionary();
+
+            if (!parameters.ContainsKey(ResourceGroupName) || string.IsNullOrEmpty(parameters[ResourceGroupName]))
+            {
+                return new BadRequestObjectResult("ResourceGroupName was missing in the query parameters.");
+            }
+
+            if (!parameters.ContainsKey(HostGroupName) || string.IsNullOrEmpty(parameters[HostGroupName]))
+            {
+                return new BadRequestObjectResult("HostGroupName was missing in the query parameters.");
+            }
+
+            if (!parameters.ContainsKey(VmName) || string.IsNullOrEmpty(parameters[VmName]))
+            {
+                return new BadRequestObjectResult("VmName was missing in the query parameters.");
+            }
+
+            var authEndpoint = _configuration["AuthEndpoint"];
+            var azureRmEndpoint = _configuration["AzureRmEndpoint"];
+            var location = _configuration["Location"];
+            var vmName = parameters[VmName];
+            var tenantId = _configuration["TenantId"];
+            var clientId = _configuration["ClientId"];
+            var clientSecret = _configuration["FairfaxClientSecret"];
+            var subscriptionId = _configuration["SubscriptionId"];
+            var resourceGroupName = parameters[ResourceGroupName];
+            var hostGroupName = parameters[HostGroupName];
+
+            log.LogInformation($"Generating auth token...");
+
+            var token = await TokenHelper.GetToken(
+                authEndpoint,
+                azureRmEndpoint,
+                tenantId,
+                clientId,
+                clientSecret);
+            var customTokenProvider = new AzureCredentials(
+                new TokenCredentials(token),
+                new TokenCredentials(token),
+                tenantId,
+                AzureEnvironment.FromName(_configuration["CloudName"]));
+            var client = RestClient
+                .Configure()
+                .WithEnvironment(AzureEnvironment.FromName(_configuration["CloudName"]))
+                .WithLogLevel(HttpLoggingDelegatingHandler.Level.Basic)
+                .WithCredentials(customTokenProvider)
+                .Build();
+
+            var azure = Azure.Authenticate(client, tenantId).WithSubscription(subscriptionId);
+            var computeManagementClient = new ComputeManagementClient(customTokenProvider)
+            {
+                SubscriptionId = subscriptionId,
+                BaseUri = new Uri(_configuration["ResourceManagerUri"]),
+                LongRunningOperationRetryTimeout = 5
+            };
+
+#if DEBUG
+            var deleteVmUri =
+                $"http://localhost:7071/api/DeleteVm" +
+                $"?token={token}" +
+                $"&cloudName={_configuration["CloudName"]}" +
+                $"&tenantId={tenantId}" +
+                $"&subscriptionId={subscriptionId}" +
+                $"&resourceGroup={resourceGroupName}" +
+                $"&dedicatedHostGroupName={hostGroupName}" +
+                $"&vmName={vmName}";
+#else
+            var deleteVmUri =
+                _configuration["DhmDeleteVmnUri"] +
+                $"&token={token}" +
+                $"&cloudName={_configuration["CloudName"]}" +
+                $"&tenantId={tenantId}" +
+                $"&subscriptionId={subscriptionId}" +
+                $"&resourceGroup={resourceGroupName}" +
+                $"&dedicatedHostGroupName={hostGroupName}" +
+                $"&vmName={vmName}";
+#endif
+
+            await _httpClient.GetAsync(deleteVmUri);
+            return new OkObjectResult($"Deleted {vmName} VM.");
         }
     }
 }

@@ -84,24 +84,6 @@ namespace DedicatedHostsTrafficGenerator
                 hostGroupName,
                 newDedicatedHostGroup);
 
-            var deleteVmUri =
-                //$"http://localhost:7071/api/DeleteVm" +
-                //$"?token={token}" +
-                "https://dhm-ignite.azurewebsites.net/api/DeleteVm?code=S9qtaTXI4ILr6aST8fwlyIbj3ExWdLg6CRzMCZ2gMRNqf46qbU75yA==" +
-                $"&token={token}" +
-                $"&cloudName={config["CloudName"]}" +
-                $"&tenantId={tenantId}" +
-                $"&subscriptionId={subscriptionId}" +
-                $"&resourceGroup={resourceGroupName}" +
-                $"&location={location}" +
-                $"&vmSku={virtualMachineSize}" +
-                $"&vmName=vm2-3816" +
-                $"&dedicatedHostGroupName={hostGroupName}" +
-                $"&platformFaultDomainCount=1";
-
-            var deleteResponse = await HttpClient.GetAsync(deleteVmUri);
-            var deleteBody = await deleteResponse.Content.ReadAsStringAsync();
-
             var taskList = new List<Task<HttpResponseMessage>>();
             var inputDictionary = new Dictionary<string, StringContent>();
             for (var i = 0; i < numVirtualMachines; i++)
@@ -135,7 +117,7 @@ namespace DedicatedHostsTrafficGenerator
 #else
 
                 var createVmUri =
-                    config["DhmFunctionUri"] +
+                    config["DhmCreateVmnUri"] +
                     $"&token={token}" +
                     $"&cloudName={config["CloudName"]}" +
                     $"&tenantId={tenantId}" +

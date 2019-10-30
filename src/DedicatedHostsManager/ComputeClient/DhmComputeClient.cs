@@ -98,7 +98,8 @@ namespace DedicatedHostsManager.ComputeClient
 
             var armMetadata = JsonConvert.DeserializeObject<List<ArmMetadata>>(armMetadataContent);
             return new Uri(armMetadata
-                .First(c => c.ResourceManager.Equals(azureEnvironment.ResourceManagerEndpoint, StringComparison.InvariantCultureIgnoreCase))
+                .First(c => c.ResourceManager.TrimEnd('/').Equals(azureEnvironment.ResourceManagerEndpoint.TrimEnd('/'),
+                    StringComparison.InvariantCultureIgnoreCase))
                 .ResourceManager);
         }
     }
