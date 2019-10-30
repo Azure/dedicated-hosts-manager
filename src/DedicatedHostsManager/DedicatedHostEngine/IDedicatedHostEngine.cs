@@ -3,6 +3,7 @@ using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Rest.Azure;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.Management.ResourceManager.Fluent;
 
 namespace DedicatedHostsManager.DedicatedHostEngine
 {
@@ -10,7 +11,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
     {
         Task<AzureOperationResponse<DedicatedHostGroup>> CreateDedicatedHostGroup(
             string token,
-            string cloudName,
+            AzureEnvironment azureEnvironment,
             string tenantId,
             string subscriptionId,
             string resourceGroup,
@@ -21,7 +22,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
         Task<AzureOperationResponse<DedicatedHost>> CreateDedicatedHost(
             string token,
-            string cloudName,
+            AzureEnvironment azureEnvironment,
             string tenantId,
             string subscriptionId,
             string resourceGroup,
@@ -32,7 +33,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
         Task<VirtualMachine> CreateVmOnDedicatedHost(
             string token,
-            string cloudName,
+            AzureEnvironment azureEnvironment,
             string tenantId,
             string subscriptionId,
             string resourceGroup,
@@ -44,7 +45,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
         Task<string> GetDedicatedHostForVmPlacement(
             string token,
-            string cloudName,
+            AzureEnvironment azureEnvironment,
             string tenantId,
             string subscriptionId,
             string resourceGroup,
@@ -55,13 +56,13 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
         Task<IList<DedicatedHostGroup>> ListDedicatedHostGroups(
             string token,
-            string cloudName,
+            AzureEnvironment azureEnvironment,
             string tenantId,
             string subscriptionId);
 
         Task DeleteVmOnDedicatedHost(
             string token,
-            string cloudName,
+            AzureEnvironment azureEnvironment,
             string tenantId,
             string subscriptionId,
             string resourceGroup,

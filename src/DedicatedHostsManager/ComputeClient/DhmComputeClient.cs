@@ -36,6 +36,7 @@ namespace DedicatedHostsManager.ComputeClient
             AzureCredentials azureCredentials,
             AzureEnvironment azureEnvironment)
         {
+            _logger.LogInformation($"MD: azure environment is {azureEnvironment.Name}");
             var baseUri = await GetResourceManagerEndpoint(azureEnvironment);
 
             return _computeManagementClient ?? (_computeManagementClient = new ComputeManagementClient(azureCredentials)
@@ -77,7 +78,7 @@ namespace DedicatedHostsManager.ComputeClient
 
             var armMetadata = JsonConvert.DeserializeObject<List<ArmMetadata>>(armMetadataContent);
             return new Uri(armMetadata
-                .First(c => c.Name.Equals(azureEnvironment.Name, StringComparison.InvariantCultureIgnoreCase))
+                .First(c => c.ResourceManager.Equals(azureEnvironment.ResourceManagerEndpoint, StringComparison.InvariantCultureIgnoreCase))
                 .ResourceManager);
         }
     }

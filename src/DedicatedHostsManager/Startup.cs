@@ -34,35 +34,47 @@ namespace DedicatedHostsManager
 
             builder.Services.AddSingleton<IConfiguration>(config);
 
-            #region Begin App Insights configuration workaround 
-            builder.Services.AddOptions<TelemetryConfiguration>()
-                .Configure<IEnumerable<ITelemetryModuleConfigurator>, IEnumerable<ITelemetryModule>>((telemetryConfig, configurators, modules) =>
-                {
-                    // Run through the registered configurators
-                    foreach (var configurator in configurators)
-                    {
-                        ITelemetryModule telemetryModule = modules.FirstOrDefault((module) => module.GetType() == configurator.TelemetryModuleType);
-                        if (telemetryModule != null)
+            if (bool.Parse(config["IsRunningInFairfax"]))
+            {
+                #region Begin App Insights configuration workaround for Azure Gov
+
+                builder.Services.AddOptions<TelemetryConfiguration>()
+                    .Configure<IEnumerable<ITelemetryModuleConfigurator>, IEnumerable<ITelemetryModule>>(
+                        (telemetryConfig, configurators, modules) =>
                         {
-                            // next line of code is giving us a compiler warning (OBSOLETE)
-                            configurator.Configure(telemetryModule);
-                        }
-                    }
+                            // Run through the registered configurators
+                            foreach (var configurator in configurators)
+                            {
+                                ITelemetryModule telemetryModule = modules.FirstOrDefault((module) =>
+                                    module.GetType() == configurator.TelemetryModuleType);
+                                if (telemetryModule != null)
+                                {
+                                    // next line of code is giving us a compiler warning (OBSOLETE)
+                                    configurator.Configure(telemetryModule);
+                                }
+                            }
+                        });
+
+                // The ConfigureTelemetryModule() call on the next line results in the following exception:
+                // FunctionAppTest: Method Microsoft.Extensions.DependencyInjection.ApplicationInsightsExtensions.ConfigureTelemetryModule: 
+                // type argument 'Microsoft.ApplicationInsights.Extensibility.PerfCounterCollector.QuickPulse.QuickPulseTelemetryModule' violates the constraint of type parameter 'T'.
+                builder.Services.ConfigureTelemetryModule<QuickPulseTelemetryModule>((module, o) =>
+                    module.QuickPulseServiceEndpoint =
+                        "https://quickpulse.applicationinsights.us/QuickPulseService.svc");
+                builder.Services.AddSingleton<IApplicationIdProvider>(_ =>
+                    new ApplicationInsightsApplicationIdProvider()
+                        {ProfileQueryEndpoint = "https://dc.applicationinsights.us/api/profiles/{0}/appId"});
+                builder.Services.AddSingleton<ITelemetryChannel>(s =>
+                {
+                    // HACK: Need to force the options factory to run somewhere so it'll run through our Configurators.
+                    var ignore = s.GetService<IOptions<TelemetryConfiguration>>().Value;
+
+                    return new ServerTelemetryChannel
+                        {EndpointAddress = "https://dc.applicationinsights.us/v2/track", DeveloperMode = true};
                 });
 
-            // The ConfigureTelemetryModule() call on the next line results in the following exception:
-            // FunctionAppTest: Method Microsoft.Extensions.DependencyInjection.ApplicationInsightsExtensions.ConfigureTelemetryModule: 
-            // type argument 'Microsoft.ApplicationInsights.Extensibility.PerfCounterCollector.QuickPulse.QuickPulseTelemetryModule' violates the constraint of type parameter 'T'.
-            builder.Services.ConfigureTelemetryModule<QuickPulseTelemetryModule>((module, o) => module.QuickPulseServiceEndpoint = "https://quickpulse.applicationinsights.us/QuickPulseService.svc");
-            builder.Services.AddSingleton<IApplicationIdProvider>(_ => new ApplicationInsightsApplicationIdProvider() { ProfileQueryEndpoint = "https://dc.applicationinsights.us/api/profiles/{0}/appId" });
-            builder.Services.AddSingleton<ITelemetryChannel>(s =>
-            {
-                // HACK: Need to force the options factory to run somewhere so it'll run through our Configurators.
-                var ignore = s.GetService<IOptions<TelemetryConfiguration>>().Value;
-
-                return new ServerTelemetryChannel { EndpointAddress = "https://dc.applicationinsights.us/v2/track", DeveloperMode = true };
-            });
-            #endregion
+                #endregion
+            }
 
             builder.Services.AddLogging(loggingBuilder =>
             {

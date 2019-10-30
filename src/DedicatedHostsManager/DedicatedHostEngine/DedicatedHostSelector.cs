@@ -33,7 +33,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
         public async Task<string> SelectDedicatedHost(
             string token,
-            string cloudName,
+            AzureEnvironment azureEnvironment,
             string tenantId,
             string subscriptionId,
             string resourceGroup,
@@ -45,9 +45,9 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 throw new ArgumentNullException(nameof(token));
             }
 
-            if (string.IsNullOrEmpty(cloudName))
+            if (azureEnvironment == null)
             {
-                throw new ArgumentNullException(nameof(cloudName));
+                throw new ArgumentNullException(nameof(azureEnvironment));
             }
 
             if (string.IsNullOrEmpty(tenantId))
@@ -72,7 +72,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
             var dedicatedHostList = await ListDedicatedHosts(
                 token,
-                cloudName,
+                azureEnvironment,
                 tenantId,
                 subscriptionId,
                 resourceGroup,
@@ -90,7 +90,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             var taskList = dedicatedHostList.Select(
                 dedicatedHost => GetAllocatableVmsOnHost(
                     token,
-                    cloudName,
+                    azureEnvironment,
                     tenantId,
                     subscriptionId,
                     resourceGroup,
@@ -120,7 +120,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
         public virtual async Task GetAllocatableVmsOnHost(
             string token,
-            string cloudName,
+            AzureEnvironment azureEnvironment,
             string tenantId,
             string subscriptionId,
             string resourceGroup,
@@ -133,9 +133,9 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 throw new ArgumentNullException(nameof(token));
             }
 
-            if (string.IsNullOrEmpty(cloudName))
+            if (azureEnvironment == null)
             {
-                throw new ArgumentNullException(nameof(cloudName));
+                throw new ArgumentNullException(nameof(azureEnvironment));
             }
 
             if (string.IsNullOrEmpty(tenantId))
@@ -147,11 +147,11 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 new TokenCredentials(token),
                 new TokenCredentials(token),
                 tenantId,
-                AzureEnvironment.FromName(cloudName));
+                azureEnvironment);
             var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
                 subscriptionId,
                 azureCredentials,
-                AzureEnvironment.FromName(cloudName));
+                azureEnvironment);
             var dedicatedHostDetails = await computeManagementClient.DedicatedHosts.GetAsync(
                 resourceGroup,
                 hostGroupName,
@@ -170,7 +170,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
         public virtual async Task<IList<DedicatedHost>> ListDedicatedHosts(
             string token,
-            string cloudName,
+            AzureEnvironment azureEnvironment,
             string tenantId,
             string subscriptionId,
             string resourceGroup,
@@ -181,9 +181,9 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 throw new ArgumentNullException(nameof(token));
             }
 
-            if (string.IsNullOrEmpty(cloudName))
+            if (azureEnvironment == null)
             {
-                throw new ArgumentNullException(nameof(cloudName));
+                throw new ArgumentNullException(nameof(azureEnvironment));
             }
 
             if (string.IsNullOrEmpty(tenantId))
@@ -195,11 +195,11 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 new TokenCredentials(token),
                 new TokenCredentials(token),
                 tenantId,
-                AzureEnvironment.FromName(cloudName));
+                azureEnvironment);
             var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
                 subscriptionId,
                 azureCredentials,
-                AzureEnvironment.FromName(cloudName));
+                azureEnvironment);
             var dedicatedHostList = new List<DedicatedHost>();
             var dedicatedHostResponse = await computeManagementClient.DedicatedHosts.ListByHostGroupAsync(resourceGroup, hostGroupName);
             dedicatedHostList.AddRange(dedicatedHostResponse.ToList());

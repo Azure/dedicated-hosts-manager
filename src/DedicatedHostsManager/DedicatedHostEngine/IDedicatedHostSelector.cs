@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Azure.Management.Compute.Models;
+using Microsoft.Azure.Management.ResourceManager.Fluent;
 
 namespace DedicatedHostsManager.DedicatedHostEngine
 {
@@ -8,7 +9,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
     {
         Task<string> SelectDedicatedHost(
             string token,
-            string cloudName,
+            AzureEnvironment azureEnvironment,
             string tenantId,
             string subscriptionId,
             string resourceGroup,
@@ -17,7 +18,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
         Task<IList<DedicatedHost>> ListDedicatedHosts(
             string token,
-            string cloudName,
+            AzureEnvironment azureEnvironment,
             string tenantId,
             string subscriptionId,
             string resourceGroup,
