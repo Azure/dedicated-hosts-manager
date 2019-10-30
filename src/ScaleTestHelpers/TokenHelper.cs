@@ -1,9 +1,12 @@
-﻿using System;
+﻿using Microsoft.IdentityModel.Clients.ActiveDirectory;
+using System;
 using System.Threading.Tasks;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
 
 namespace ScaleTestHelpers
 {
+    /// <summary>
+    /// Gets an AAD token for ARM operations, used by Dedicated Hosts Manager testing clients.
+    /// </summary>
     public class TokenHelper
     {
         public static async Task<string> GetToken(

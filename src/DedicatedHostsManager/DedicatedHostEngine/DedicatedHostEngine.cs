@@ -23,6 +23,9 @@ using SubResource = Microsoft.Azure.Management.Compute.Models.SubResource;
 
 namespace DedicatedHostsManager.DedicatedHostEngine
 {
+    /// <summary>
+    /// The Dedicated Host Engine managed host and VM (on Host) lifecycle and allocation.
+    /// </summary>
     public class DedicatedHostEngine : IDedicatedHostEngine
     {
         private readonly ILogger<DedicatedHostEngine> _logger;
@@ -32,6 +35,15 @@ namespace DedicatedHostsManager.DedicatedHostEngine
         private readonly IDedicatedHostStateManager _dedicatedHostStateManager;
         private readonly IDhmComputeClient _dhmComputeClient;
 
+        /// <summary>
+        /// Initializes the Dedicated Host engine.
+        /// </summary>
+        /// <param name="logger">Logger.</param>
+        /// <param name="configuration">Configuration.</param>
+        /// <param name="dedicatedHostSelector">Dedicated Host selector.</param>
+        /// <param name="syncProvider">Sync provider.</param>
+        /// <param name="dedicatedHostStateManager">Dedicated Host state manager.</param>
+        /// <param name="dhmComputeClient">Dedicated Host compute client.</param>
         public DedicatedHostEngine(
             ILogger<DedicatedHostEngine> logger, 
             IConfiguration configuration,
@@ -48,6 +60,18 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             _dhmComputeClient = dhmComputeClient;
         }
 
+        /// <summary>
+        /// Creates a Dedicated Host Group.
+        /// </summary>
+        /// <param name="token">Auth token.</param>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        /// <param name="tenantId">Tenant ID.</param>
+        /// <param name="subscriptionId">Subscription ID.</param>
+        /// <param name="resourceGroup">Resource group.</param>
+        /// <param name="dhgName">Dedicated Host group name.</param>
+        /// <param name="azName">Availability zone.</param>
+        /// <param name="platformFaultDomainCount">Fault domain count.</param>
+        /// <param name="location">Location/region.</param>
         public async Task<AzureOperationResponse<DedicatedHostGroup>> CreateDedicatedHostGroup(
             string token,
             AzureEnvironment azureEnvironment,
@@ -137,7 +161,19 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
             return response;
         }
-      
+
+        /// <summary>
+        /// Creates a Dedicated Host.
+        /// </summary>
+        /// <param name="token">Auth token.</param>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        /// <param name="tenantId">Tenant ID.</param>
+        /// <param name="subscriptionId">Subscription ID.</param>
+        /// <param name="resourceGroup">Resource group.</param>
+        /// <param name="dhgName">Dedicated Host group name.</param>
+        /// <param name="dhName">Dedicated Host name.</param>
+        /// <param name="dhSku">Dedicated Host SKU</param>
+        /// <param name="location">Azure region.</param>
         public async Task<AzureOperationResponse<DedicatedHost>> CreateDedicatedHost(
             string token,
             AzureEnvironment azureEnvironment,
@@ -228,6 +264,19 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 null);
         }
 
+        /// <summary>
+        /// Creates a VM on a Dedicated Host
+        /// </summary>
+        /// <param name="token">Auth token.</param>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        /// <param name="tenantId">Tenant ID.</param>
+        /// <param name="subscriptionId">Subscription ID.</param>
+        /// <param name="resourceGroup">Resource group.</param>
+        /// <param name="dhgName">Dedicated Host group name.</param>
+        /// <param name="vmSku">VM SKU.</param>
+        /// <param name="vmName">VM name.</param>
+        /// <param name="region">Azure region for VM.</param>
+        /// <param name="virtualMachine">VirtualMachine object (serialized).</param>
         public async Task<VirtualMachine> CreateVmOnDedicatedHost(
             string token,
             AzureEnvironment azureEnvironment,
@@ -349,7 +398,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                     }
                 }
 
-                // TODO: Remove below if block once the Compute DH stops provisioning VMs in F state when capacity bound.
+                // TODO: Remove below 'if block' once the Compute DH stops provisioning VMs in F state when capacity bound.
                 // TODO: Intentional code duplication below to keep logic related to this bug separate.
                 if (string.Equals(vmProvisioningState, "Failed", StringComparison.InvariantCultureIgnoreCase))
                 {
@@ -390,7 +439,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                     }
                 }
 
-                // VM provisioning takes a few seconds, wait for provisioning state to update
+                // Wait for VM provisioning state to update
                 await Task.Delay(TimeSpan.FromSeconds(new Random().Next(minIntervalToCheckForVmInSeconds, maxIntervalToCheckForVmInSeconds)));
                 await Policy
                     .Handle<CloudException>()
@@ -414,6 +463,18 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             return response;
         }
 
+        /// <summary>
+        /// Finds a Dedicated Host to host a VM.
+        /// </summary>
+        /// <param name="token">Auth token.</param>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        /// <param name="tenantId">Tenant ID.</param>
+        /// <param name="subscriptionId">Subscription ID.</param>
+        /// <param name="resourceGroup">Resource group.</param>
+        /// <param name="hostGroupName">Dedicated Host group name.</param>
+        /// /// <param name="requiredVmSize">VM SKU.</param>
+        /// <param name="vmName">VM name.</param>
+        /// <param name="location">VM region.</param>
         public async Task<string> GetDedicatedHostForVmPlacement(
             string token,
             AzureEnvironment azureEnvironment,
@@ -573,31 +634,17 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             _logger.LogMetric("GetDedicatedHostTimeSecondsMetric", innerLoopStopwatch.Elapsed.TotalSeconds);
             _logger.LogInformation($"GetDedicatedHost: Took {innerLoopStopwatch.Elapsed.TotalSeconds} seconds to find a matching host {matchingHostId} for {vmName} of {requiredVmSize} SKU.");
             return matchingHostId;
-        }
+        } 
 
-        private async Task<string> GetDedicatedHostGroupId(
-            string token,
-            AzureEnvironment azureEnvironment,
-            string tenantId,
-            string subscriptionId,
-            string resourceGroupName, 
-            string hostGroupName)
-        {
-            var azureCredentials = new AzureCredentials(
-                new TokenCredentials(token),
-                new TokenCredentials(token),
-                tenantId,
-                azureEnvironment);
-
-            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
-                subscriptionId,
-                azureCredentials,
-                azureEnvironment);
-            return (await computeManagementClient.DedicatedHostGroups.GetAsync(resourceGroupName, hostGroupName)).Id;
-        }
-
+        /// <summary>
+        /// List Dedicated Host groups.
+        /// </summary>
+        /// <param name="token">Auth token.</param>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        /// <param name="tenantId">Tenant ID.</param>
+        /// <param name="subscriptionId">Subscription ID.</param>
         public async Task<IList<DedicatedHostGroup>> ListDedicatedHostGroups(
-            string token,
+        string token,
             AzureEnvironment azureEnvironment,
             string tenantId,
             string subscriptionId)
@@ -644,6 +691,18 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             return dedicatedHostGroups;
         }
 
+        /// <summary>
+        /// Deletes a VM running on a Dedicated Host, and the Host too if it does not have
+        /// any more VMs running.
+        /// </summary>
+        /// <param name="token">Auth token.</param>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        /// <param name="tenantId">Tenant ID.</param>
+        /// <param name="subscriptionId">Subscription ID.</param>
+        /// <param name="resourceGroup">Resource group.</param>
+        /// <param name="dedicatedHostGroup">Dedicated Host group name.</param>
+        /// <param name="vmName">VM name.</param>
+        /// <returns></returns>
         public async Task DeleteVmOnDedicatedHost(
             string token,
             AzureEnvironment azureEnvironment,
@@ -733,9 +792,39 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 if (!_dedicatedHostStateManager.IsHostInUsage(hostId.ToLower()))
                 {
                     await computeManagementClient.DedicatedHosts.DeleteAsync(resourceGroup, dedicatedHostGroup, dedicatedHost.Name);
-                    _dedicatedHostStateManager.UnmarkHostUsage(hostId.ToLower());
+                    _dedicatedHostStateManager.UnmarkHostForDeletion(hostId.ToLower());
                 }
             }
+        }
+
+        /// <summary>
+        /// Gets the ID for a Dedicated Host group.
+        /// </summary>
+        /// <param name="token">Auth token.</param>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        /// <param name="tenantId">Tenant ID.</param>
+        /// <param name="subscriptionId">Subscription ID.</param>
+        /// <param name="resourceGroupName">Resource group.</param>
+        /// <param name="hostGroupName">Dedicated Host group name.</param>
+        private async Task<string> GetDedicatedHostGroupId(
+            string token,
+            AzureEnvironment azureEnvironment,
+            string tenantId,
+            string subscriptionId,
+            string resourceGroupName,
+            string hostGroupName)
+        {
+            var azureCredentials = new AzureCredentials(
+                new TokenCredentials(token),
+                new TokenCredentials(token),
+                tenantId,
+                azureEnvironment);
+
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                azureEnvironment);
+            return (await computeManagementClient.DedicatedHostGroups.GetAsync(resourceGroupName, hostGroupName)).Id;
         }
     }
 }

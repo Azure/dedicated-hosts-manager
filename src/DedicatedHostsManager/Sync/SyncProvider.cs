@@ -7,6 +7,9 @@ using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace DedicatedHostsManager.Sync
 {
+    /// <summary>
+    /// Synchronization handling.
+    /// </summary>
     public class SyncProvider : ISyncProvider
     {
         private readonly IConfiguration _configuration;
@@ -14,6 +17,11 @@ namespace DedicatedHostsManager.Sync
         private readonly CloudBlobContainer _cloudBlobContainer;
         private string _lease;
 
+        /// <summary>
+        /// Initialize sync provider.
+        /// </summary>
+        /// <param name="configuration">Configuration.</param>
+        /// <param name="logger">Logging.</param>
         public SyncProvider(IConfiguration configuration, ILogger<SyncProvider> logger)
         {
             _configuration = configuration;
@@ -23,6 +31,10 @@ namespace DedicatedHostsManager.Sync
             _cloudBlobContainer = blobClient.GetContainerReference(_configuration["LockContainerName"]);
         }
 
+        /// <summary>
+        /// Serializing logic (start) using storage leases.
+        /// </summary>
+        /// <param name="blobName">Storage blob name.</param>
         public async Task StartSerialRequests(string blobName)
         {
             await _cloudBlobContainer.CreateIfNotExistsAsync();
@@ -37,6 +49,10 @@ namespace DedicatedHostsManager.Sync
             _logger.LogInformation($"Acquired lock for {blockBlob}");
         }
 
+        /// <summary>
+        /// Serializing logic (stop) using storage leases.
+        /// </summary>
+        /// <param name="blobName">Storage blob name.</param>
         public async Task EndSerialRequests(string blobName)
         {
             if (!string.IsNullOrEmpty(_lease))

@@ -2,6 +2,9 @@
 
 namespace DedicatedHostsManager.ComputeClient
 {
+    /// <summary>
+    /// ARM suffix endpoints schema.
+    /// </summary>
     public class SuffixEndpoints
     {
         /// <summary>

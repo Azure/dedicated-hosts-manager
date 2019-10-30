@@ -19,6 +19,9 @@ using JsonConvert = Newtonsoft.Json.JsonConvert;
 
 namespace DedicatedHostsManagerTests
 {
+    /// <summary>
+    /// Unit tests for Dedicated Hosts Selector.
+    /// </summary>
     public class DedicatedHostsSelectorTests
     {
         private const string Token = "test-Token";

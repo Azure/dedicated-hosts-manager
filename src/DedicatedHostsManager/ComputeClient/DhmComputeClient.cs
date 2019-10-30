@@ -14,6 +14,9 @@ using System.Threading.Tasks;
 
 namespace DedicatedHostsManager.ComputeClient
 {
+    /// <summary>
+    /// Initializes the compute client (from ARM metadata) to use with Dedicated Host calls.
+    /// </summary>
     public class DhmComputeClient : IDhmComputeClient
     {
         private static IComputeManagementClient _computeManagementClient;
@@ -21,6 +24,12 @@ namespace DedicatedHostsManager.ComputeClient
         private readonly IConfiguration _configuration;
         private readonly ILogger<DedicatedHostStateManager.DedicatedHostStateManager> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the DhmComputeClient class.
+        /// </summary>
+        /// <param name="configuration">Configuration.</param>
+        /// <param name="logger">Logger.</param>
+        /// <param name="httpClientFactory">To create an HTTP client.</param>
         public DhmComputeClient(
             IConfiguration configuration, 
             ILogger<DedicatedHostStateManager.DedicatedHostStateManager> logger,
@@ -31,12 +40,18 @@ namespace DedicatedHostsManager.ComputeClient
             _httpClient = httpClientFactory.CreateClient();
         }
 
+        /// <summary>
+        /// Get an instance of the Dedicated Host compute client.
+        /// </summary>
+        /// <param name="subscriptionId">Subscription ID.</param>
+        /// <param name="azureCredentials">Credentials used for Azure authentication.</param>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        
         public async Task<IComputeManagementClient> GetComputeManagementClient(
             string subscriptionId,
             AzureCredentials azureCredentials,
             AzureEnvironment azureEnvironment)
         {
-            _logger.LogInformation($"MD: azure environment is {azureEnvironment.Name}");
             var baseUri = await GetResourceManagerEndpoint(azureEnvironment);
 
             return _computeManagementClient ?? (_computeManagementClient = new ComputeManagementClient(azureCredentials)
@@ -48,6 +63,11 @@ namespace DedicatedHostsManager.ComputeClient
             });
         }
 
+        /// <summary>
+        /// Gets Azure Resource Endpoint for an Azure cloud.
+        /// </summary>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        
         private async Task<Uri> GetResourceManagerEndpoint(AzureEnvironment azureEnvironment)
         {
             var armMetadataRetryCount = int.Parse(_configuration["GetArmMetadataRetryCount"]);

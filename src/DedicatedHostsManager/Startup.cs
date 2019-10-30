@@ -21,8 +21,15 @@ using Microsoft.Extensions.Options;
 [assembly: FunctionsStartup(typeof(Startup))]
 namespace DedicatedHostsManager
 {
+    /// <summary>
+    /// Function Startup.
+    /// </summary>
     internal class Startup : FunctionsStartup
     {
+        /// <summary>
+        /// Configure Function.
+        /// </summary>
+        /// <param name="builder">Function Host Builder.</param>
         public override void Configure(IFunctionsHostBuilder builder)
         {
             var config = new ConfigurationBuilder()

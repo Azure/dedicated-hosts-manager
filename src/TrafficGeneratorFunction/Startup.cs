@@ -7,8 +7,15 @@ using TrafficGeneratorFunction;
 [assembly: FunctionsStartup(typeof(Startup))]
 namespace TrafficGeneratorFunction
 {
+    /// <summary>
+    /// Function startup.
+    /// </summary>
     internal class Startup : FunctionsStartup
     {
+        /// <summary>
+        /// Function Configuration.
+        /// </summary>
+        /// <param name="builder">Function Host Builder.</param>
         public override void Configure(IFunctionsHostBuilder builder)
         {
             var config = new ConfigurationBuilder()

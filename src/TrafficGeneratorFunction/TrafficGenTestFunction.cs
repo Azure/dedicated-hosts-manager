@@ -21,6 +21,9 @@ using System.Threading.Tasks;
 
 namespace TrafficGeneratorFunction
 {
+    /// <summary>
+    /// Testing client for the Dedicated Hosts Manager library.
+    /// </summary>
     public class Function1TrafficGenTestFunction
     {
         private readonly IHttpClientFactory _httpClientFactory;
@@ -31,6 +34,11 @@ namespace TrafficGeneratorFunction
         private const string VmCount = "vmCount";
         private const string VmSku = "vmSku";
 
+        /// <summary>
+        /// Initialization.
+        /// </summary>
+        /// <param name="httpClientFactory">HTTP client factory.</param>
+        /// <param name="configuration">Configuration.</param>
         public Function1TrafficGenTestFunction(IHttpClientFactory httpClientFactory, IConfiguration configuration)
         {
             _httpClientFactory = httpClientFactory;
@@ -38,7 +46,13 @@ namespace TrafficGeneratorFunction
             _configuration = configuration;
         }
 
-        [FunctionName("TestDedicatedHostManager")]
+        /// <summary>
+        /// Test Dedicated Host Manager VM creation.
+        /// </summary>
+        /// <param name="req">HTTP request.</param>
+        /// <param name="log">Logger.</param>
+        /// <returns></returns>
+        [FunctionName("TestDedicatedHostManagerVmCreation")]
         public async Task<IActionResult> Run(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)

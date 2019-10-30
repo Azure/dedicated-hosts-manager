@@ -15,12 +15,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Azure.Management.Fluent;
 using Xunit;
 using DedicatedHostGroup = Microsoft.Azure.Management.Compute.Models.DedicatedHostGroup;
 
 namespace DedicatedHostsManagerTests
 {
+    /// <summary>
+    /// Unit tests for Dedicated Hosts Engine.
+    /// </summary>
     public class DedicatedHostEngineTests
     {
         private const string Token = "test-Token";
@@ -165,30 +167,6 @@ namespace DedicatedHostsManagerTests
                     dedicatedHostStateManager,
                     dhmComputeClient)
             {
-            }
-
-            protected IComputeManagementClient ComputeManagementClient(
-                string subscriptionId,
-                AzureCredentials azureCredentials)
-            {
-                var mockDhg = new DedicatedHostGroup(Location, PlatformFaultDomainCount, null, HostGroupName);
-                _dedicatedHostGroupResponseMock = new AzureOperationResponse<DedicatedHostGroup>
-                {
-                    Body = mockDhg,
-                };
-                _dedicatedHostGroupResponseMock.Body.Location = Location;
-                _dedicatedHostGroupResponseMock.Body.PlatformFaultDomainCount = PlatformFaultDomainCount;
-                var computeManagementClientMock = new Mock<IComputeManagementClient>();
-                computeManagementClientMock
-                    .Setup(
-                        s => s.DedicatedHostGroups.CreateOrUpdateWithHttpMessagesAsync(
-                            It.IsAny<string>(),
-                            It.IsAny<string>(),
-                            It.IsAny<DedicatedHostGroup>(),
-                            null,
-                            It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(_dedicatedHostGroupResponseMock);
-                return computeManagementClientMock.Object;
             }
         }
     }

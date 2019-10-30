@@ -15,12 +15,21 @@ using System.Threading.Tasks;
 
 namespace DedicatedHostsManager.DedicatedHostEngine
 {
+    /// <summary>
+    /// The Dedicated Hosts selector.
+    /// </summary>
     public class DedicatedHostSelector : IDedicatedHostSelector
     {
         private readonly ILogger<DedicatedHostSelector> _logger;
         private readonly IDedicatedHostStateManager _dedicatedHostStateManager;
         private readonly IDhmComputeClient _dhmComputeClient;
 
+        /// <summary>
+        /// Initializes the Dedicated Host selector.
+        /// </summary>
+        /// <param name="logger">Logger.</param>
+        /// <param name="dedicatedHostStateManager">Dedicated Host state management.</param>
+        /// <param name="dhmComputeClient">Dedicated Host compute client.</param>
         public DedicatedHostSelector(
             ILogger<DedicatedHostSelector> logger, 
             IDedicatedHostStateManager dedicatedHostStateManager,
@@ -31,6 +40,16 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             _dhmComputeClient = dhmComputeClient;
         }
 
+        /// <summary>
+        /// Selects a Dedicated Host from a pool of available hosts.
+        /// </summary>
+        /// <param name="token">Auth token.</param>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        /// <param name="tenantId">Azure tenant ID.</param>
+        /// <param name="subscriptionId">Subscription ID.</param>
+        /// <param name="resourceGroup">Resource group.</param>
+        /// <param name="hostGroupName">Dedicated Host group name.</param>
+        /// <param name="requiredVmSize">Needed VM size/SKU.</param>
         public async Task<string> SelectDedicatedHost(
             string token,
             AzureEnvironment azureEnvironment,
@@ -118,6 +137,17 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             return matchingHosts[randomHost].Id;
         }
 
+        /// <summary>
+        /// Retrieves VMs (number and type) that can be allocated on a Dedicated Host.
+        /// </summary>
+        /// <param name="token">Auth token.</param>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        /// <param name="tenantId">Tenant ID.</param>
+        /// <param name="subscriptionId">Subscription ID.</param>
+        /// <param name="resourceGroup">Resource group.</param>
+        /// <param name="hostGroupName">Dedicated host group name.</param>
+        /// <param name="dedicatedHost">Dedicated Host object.</param>
+        /// <param name="dictionary">Dictionary object.</param>
         public virtual async Task GetAllocatableVmsOnHost(
             string token,
             AzureEnvironment azureEnvironment,
@@ -168,6 +198,15 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             dictionary[dedicatedHost] = virtualMachineList;
         }
 
+        /// <summary>
+        /// List Dedicated Hosts in a host group.
+        /// </summary>
+        /// <param name="token">Auth token.</param>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        /// <param name="tenantId">Tenant ID.</param>
+        /// <param name="subscriptionId">Subscription ID.</param>
+        /// <param name="resourceGroup">Resource group.</param>
+        /// <param name="hostGroupName">Dedicated Host group name.</param>
         public virtual async Task<IList<DedicatedHost>> ListDedicatedHosts(
             string token,
             AzureEnvironment azureEnvironment,
