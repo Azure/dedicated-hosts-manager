@@ -2,30 +2,29 @@
 
 namespace DedicatedHostsManager.ComputeClient
 {
+    /// <summary>
+    /// ARM authentication schema.
+    /// </summary>
     public class AuthEndpoint
     {
         /// <summary>
         /// Gets or sets the authentication endpoint.
         /// </summary>
-        [JsonProperty(Required = Required.Default)]
         public string LoginEndpoint { get; set; }
 
         /// <summary>
         /// Gets or sets the resource manager resource identifier.
         /// </summary>
-        [JsonProperty(Required = Required.Default)]
         public string[] Audiences { get; set; }
 
         /// <summary>
         /// Gets or sets the tenant.
         /// </summary>
-        [JsonProperty(Required = Required.Default)]
         public string Tenant { get; set; }
 
         /// <summary>
-        /// Gets or sets the identity provider type (AAD or ADFS).
+        /// Gets or sets the identity provider.
         /// </summary>
-        [JsonProperty(Required = Required.Default)]
         public string IdentityProvider { get; set; }
     }
 }

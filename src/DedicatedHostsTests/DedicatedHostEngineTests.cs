@@ -20,6 +20,9 @@ using DedicatedHostGroup = Microsoft.Azure.Management.Compute.Models.DedicatedHo
 
 namespace DedicatedHostsManagerTests
 {
+    /// <summary>
+    /// Unit tests for Dedicated Hosts Engine.
+    /// </summary>
     public class DedicatedHostEngineTests
     {
         private const string Token = "test-Token";
@@ -76,7 +79,7 @@ namespace DedicatedHostsManagerTests
                 dhmComputeClientMock.Object);
             var createDedicatedHostGroupResponse = await dedicatedHostEngineTest.CreateDedicatedHostGroup(
                 Token,
-                CloudName,
+                AzureEnvironment.AzureUSGovernment,
                 TenantId,
                 SubscriptionId,
                 ResourceGroup,
@@ -126,12 +129,12 @@ namespace DedicatedHostsManagerTests
                     File.ReadAllText(@"TestData\dedicatedHostsInput1.json"));
             dedicatedHostSelectorMock
                 .Setup(
-                    s => s.ListDedicatedHosts(Token, CloudName, TenantId, SubscriptionId, ResourceGroup, HostGroupName))
+                    s => s.ListDedicatedHosts(Token, AzureEnvironment.AzureUSGovernment, TenantId, SubscriptionId, ResourceGroup, HostGroupName))
                 .ReturnsAsync(dedicatedHostList);
             dedicatedHostStateManagerMock.Setup(s => s.IsHostAtCapacity(It.IsAny<string>())).Returns(false);
             dedicatedHostSelectorMock
                 .Setup(
-                s => s.SelectDedicatedHost(Token, CloudName, TenantId, SubscriptionId, ResourceGroup, HostGroupName, VmSize))
+                s => s.SelectDedicatedHost(Token, AzureEnvironment.AzureUSGovernment, TenantId, SubscriptionId, ResourceGroup, HostGroupName, VmSize))
                 .ReturnsAsync("/subscriptions/6e412d70-9128-48a7-97b4-04e5bd35cefc/resourceGroups/63296244-ce2c-46d8-bc36-3e558792fbee/providers/Microsoft.Compute/hostGroups/citrix-dhg/hosts/20887a6e-0866-4bae-82b7-880839d9e76b");
 
             var dedicatedHostEngine = new DedicatedHostEngine(
@@ -141,7 +144,7 @@ namespace DedicatedHostsManagerTests
                 syncProviderMock.Object,
                 dedicatedHostStateManagerMock.Object,
                 dhmComputeClientMock.Object);
-            var host = await dedicatedHostEngine.GetDedicatedHostForVmPlacement(Token, CloudName, TenantId, SubscriptionId,
+            var host = await dedicatedHostEngine.GetDedicatedHostForVmPlacement(Token, AzureEnvironment.AzureUSGovernment, TenantId, SubscriptionId,
                 ResourceGroup, HostGroupName, VmSize, "test-vm", Location);
 
             Assert.Equal(host, "/subscriptions/6e412d70-9128-48a7-97b4-04e5bd35cefc/resourceGroups/63296244-ce2c-46d8-bc36-3e558792fbee/providers/Microsoft.Compute/hostGroups/citrix-dhg/hosts/20887a6e-0866-4bae-82b7-880839d9e76b");
@@ -164,30 +167,6 @@ namespace DedicatedHostsManagerTests
                     dedicatedHostStateManager,
                     dhmComputeClient)
             {
-            }
-
-            protected IComputeManagementClient ComputeManagementClient(
-                string subscriptionId,
-                AzureCredentials azureCredentials)
-            {
-                var mockDhg = new DedicatedHostGroup(Location, PlatformFaultDomainCount, null, HostGroupName);
-                _dedicatedHostGroupResponseMock = new AzureOperationResponse<DedicatedHostGroup>
-                {
-                    Body = mockDhg,
-                };
-                _dedicatedHostGroupResponseMock.Body.Location = Location;
-                _dedicatedHostGroupResponseMock.Body.PlatformFaultDomainCount = PlatformFaultDomainCount;
-                var computeManagementClientMock = new Mock<IComputeManagementClient>();
-                computeManagementClientMock
-                    .Setup(
-                        s => s.DedicatedHostGroups.CreateOrUpdateWithHttpMessagesAsync(
-                            It.IsAny<string>(),
-                            It.IsAny<string>(),
-                            It.IsAny<DedicatedHostGroup>(),
-                            null,
-                            It.IsAny<CancellationToken>()))
-                    .ReturnsAsync(_dedicatedHostGroupResponseMock);
-                return computeManagementClientMock.Object;
             }
         }
     }

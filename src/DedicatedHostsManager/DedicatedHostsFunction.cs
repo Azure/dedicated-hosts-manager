@@ -1,31 +1,46 @@
-using System;
-using System.Diagnostics;
-using System.Threading.Tasks;
 using DedicatedHostsManager.DedicatedHostEngine;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Management.Compute.Models;
+using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System;
+using System.Diagnostics;
+using System.Threading.Tasks;
 using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 
 namespace DedicatedHostsManager
 {
+    /// <summary>
+    /// Functions to expose Dedicated Host Manager library.
+    /// </summary>
     public class DedicatedHostsFunction
     {
         private readonly IDedicatedHostEngine _dedicatedHostEngine;
         private readonly IConfiguration _configuration;
 
+        /// <summary>
+        /// Initialization.
+        /// </summary>
+        /// <param name="dedicatedHostEngine">Dedicated Host Engine.</param>
+        /// <param name="configuration">Configuration.</param>
         public DedicatedHostsFunction(IDedicatedHostEngine dedicatedHostEngine, IConfiguration configuration)
         {
             _dedicatedHostEngine = dedicatedHostEngine;
             _configuration = configuration;
         }
 
+        /// <summary>
+        /// Function to create a VM on a Dedicated Host.
+        /// </summary>
+        /// <param name="req">HTTP request.</param>
+        /// <param name="log">Logger.</param>
+        /// <param name="context">Function execution context.</param>
         [FunctionName("CreateVm")]
         public async Task<IActionResult> CreateVmOnDedicatedHost(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]
@@ -95,10 +110,21 @@ namespace DedicatedHostsManager
             {
                 var requestBody = await req.ReadAsStringAsync();
                 var virtualMachine = JsonConvert.DeserializeObject<VirtualMachine>(requestBody);
+                var cloudName = parameters[Constants.CloudName];
+                AzureEnvironment azureEnvironment = null;
+                if (cloudName.Equals("AzureGlobalCloud", StringComparison.InvariantCultureIgnoreCase)
+                    || cloudName.Equals("AzureCloud", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    azureEnvironment = AzureEnvironment.AzureGlobalCloud;
+                }
+                else
+                {
+                    azureEnvironment = AzureEnvironment.FromName(cloudName);
+                }
 
                 var createVmResponse = await _dedicatedHostEngine.CreateVmOnDedicatedHost(
                     parameters[Constants.Token],
-                    parameters[Constants.CloudName],
+                    azureEnvironment,
                     parameters[Constants.TenantId],
                     parameters[Constants.SubscriptionId],
                     parameters[Constants.ResourceGroup],
@@ -123,6 +149,13 @@ namespace DedicatedHostsManager
             }
         }
 
+        /// <summary>
+        /// Function to delete a VM on a Dedicated Host, and the Host itself as well,
+        /// when the last VM running on the Host is deleted.
+        /// </summary>
+        /// <param name="req">HTTP request.</param>
+        /// <param name="log">Logger.</param>
+        /// <param name="context">Function execution context.</param>
         [FunctionName("DeleteVm")]
         public async Task<IActionResult> DeleteVmFromDedicatedHost(
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]
@@ -173,9 +206,21 @@ namespace DedicatedHostsManager
             var sw = Stopwatch.StartNew();
             try
             {
+                var cloudName = parameters[Constants.CloudName];
+                AzureEnvironment azureEnvironment = null;
+                if (cloudName.Equals("AzureGlobalCloud", StringComparison.InvariantCultureIgnoreCase)
+                    || cloudName.Equals("AzureCloud", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    azureEnvironment = AzureEnvironment.AzureGlobalCloud;
+                }
+                else
+                {
+                    azureEnvironment = AzureEnvironment.FromName(cloudName);
+                }
+
                 await _dedicatedHostEngine.DeleteVmOnDedicatedHost(
                     parameters[Constants.Token],
-                    parameters[Constants.CloudName],
+                    azureEnvironment,
                     parameters[Constants.TenantId],
                     parameters[Constants.SubscriptionId],
                     parameters[Constants.ResourceGroup],

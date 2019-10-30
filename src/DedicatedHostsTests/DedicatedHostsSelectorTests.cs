@@ -19,6 +19,9 @@ using JsonConvert = Newtonsoft.Json.JsonConvert;
 
 namespace DedicatedHostsManagerTests
 {
+    /// <summary>
+    /// Unit tests for Dedicated Hosts Selector.
+    /// </summary>
     public class DedicatedHostsSelectorTests
     {
         private const string Token = "test-Token";
@@ -79,7 +82,7 @@ namespace DedicatedHostsManagerTests
             var dedicatedHostSelector = new DedicatedHostSelectorTest(loggerMock.Object, dedicatedHostStateManagerMock.Object, dhmComputeClientMock.Object);
             var actualHostId = await dedicatedHostSelector.SelectDedicatedHost(
                 Token,
-                CloudName,
+                AzureEnvironment.AzureUSGovernment,
                 TenantId,
                 SubscriptionId,
                 ResourceGroup,
@@ -101,7 +104,7 @@ namespace DedicatedHostsManagerTests
 
             public override async Task<IList<DedicatedHost>> ListDedicatedHosts(
                 string token,
-                string cloudName,
+                AzureEnvironment azureEnvironment,
                 string tenantId,
                 string subscriptionId,
                 string resourceGroup,
@@ -112,7 +115,7 @@ namespace DedicatedHostsManagerTests
             }
 
             public override async Task GetAllocatableVmsOnHost(string token,
-                string cloudName,
+                AzureEnvironment azureEnvironment,
                 string tenantId,
                 string subscriptionId,
                 string resourceGroup,

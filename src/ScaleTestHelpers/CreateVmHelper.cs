@@ -1,12 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using Microsoft.Azure.Management.Compute;
+﻿using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
+using System;
+using System.Collections.Generic;
 
 namespace ScaleTestHelpers
 {
+    /// <summary>
+    /// Helper class used by testing clients to create VMs.
+    /// </summary>
     public class CreateVmHelper
     {
         public static VirtualMachine CreateVirtualMachine(
@@ -50,13 +53,6 @@ namespace ScaleTestHelpers
             {
                 throw new ArgumentException(nameof(vmSize));
             }
-
-            // Note: don't block on zone availability
-            //
-            //if (string.IsNullOrEmpty(availabilityZone))
-            //{
-            //    throw new ArgumentException(nameof(availabilityZone));
-            //}
 
             if (string.IsNullOrEmpty(pipName))
             {

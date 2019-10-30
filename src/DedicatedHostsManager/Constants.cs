@@ -1,5 +1,8 @@
 ﻿namespace DedicatedHostsManager
 {
+    /// <summary>
+    /// Constants used by Dedicated Hosts manager.
+    /// </summary>
     public static class Constants
     {
         public const string CloudName = "cloudName";
