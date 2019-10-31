@@ -27,6 +27,12 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             string requiredVmSize);
 
         /// <summary>
+        /// Select the most "packed" host.
+        /// </summary>
+        /// <param name="hostList">Dedicated Host collection.</param>
+        DedicatedHost SelectMostPackedHost(IList<DedicatedHost> hostList);
+
+        /// <summary>
         /// List Dedicated Hosts in a host group.
         /// </summary>
         /// <param name="token">Auth token.</param>
