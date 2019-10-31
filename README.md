@@ -5,7 +5,11 @@ Azure Dedicated Host (DH) provides physical servers that host one or more Azure 
 The Dedicated Hosts Manager library abstracts Host Management logic from users, and makes it easy for users to use DH. Users only need to specify the number and SKU of VMs that need to be allocated, and this library takes care of the rest. This library is packaged as an Azure Function that can be deployed in your subscription, and is easy to integrate with . The library is extensible and allows for customizing Host selection logic.
 
 # Usage
-1. Deploy the Dedicated Hosts Manager function in your subscription and setup the below config.
+1. Create a Resource Group using the Azure portal/CLI.
+2. Deploy an Azure Function to your resource group.
+3. Create a storage account in your resource group.
+4. Create an Azure Redis cache in your resource group.
+5. Deploy the Dedicated Hosts Manager function in your resource group, and setup the below config.
     _Application settings:_
     ```json
     {
@@ -13,12 +17,36 @@ The Dedicated Hosts Manager library abstracts Host Management logic from users, 
         "value": "App Insights Instrumentation Key",
     },
     {
+        "name": "ComputeClientHttpTimeoutMin",
+        "value": "30",
+    },
+    {
+        "name": "ComputeClientLongRunningOperationRetryTimeoutSeconds",
+        "value": "5",
+    },
+    {
+        "name": "DedicatedHostCacheTtlMin",
+        "value": "5",
+    },
+    {
         "name": "DhgCreateRetryCount",
         "value": "10",
     },
     {
-        "name": "LockBlobPrefix",
-        "value": "lock-",
+        "name": "GetArmMetadataRetryCount",
+        "value": "3",
+    },
+    {
+        "name": "GetArmMetadataUrl",
+        "value": "https://management.azure.com/metadata/endpoints?api-version=2019-05-01",
+    },
+    {
+        "name": "HostSelectorVmSize",
+        "value": "Standard_D2s_v3",
+    },
+    {
+        "name": "IsRunningInFairfax",
+        "value": "false",
     },
     {
         "name": "LockContainerName",
@@ -41,6 +69,18 @@ The Dedicated Hosts Manager library abstracts Host Management logic from users, 
         "value": "20",
     },
     {
+        "name": "RedisConnectRetryCount",
+        "value": "3",
+    },
+    {
+        "name": "RedisConnectTimeoutMilliseconds",
+        "value": "5000",
+    },
+    {
+        "name": "RedisSyncTimeoutMilliseconds",
+        "value": "10000",
+    },
+    {
         "name": "RetryCountToCheckVmState",
         "value": "10",
     },
@@ -54,11 +94,16 @@ The Dedicated Hosts Manager library abstracts Host Management logic from users, 
     ```json
     {
         "name": "StorageConnectionString",
-        "value": "Storage connection string",
+        "value": "<Your storage connection string>",
+    },
+    {
+        "name": "RedisConnectionString",
+        "value": "<Your redis connection string>",
     }
     ```
 
-2. Deploy the Dedicated Host Manager Test function in your subscription with the below config.
+6. Integrate the Dedicated Host Manager library/function to proxy create/delete VM calls for your existing code. 
+7. If needed, deploy the Dedicated Host Manager Test client (function) in your resource group with the below config.
 
     _Application settings:_
     ```json
@@ -72,28 +117,47 @@ The Dedicated Hosts Manager library abstracts Host Management logic from users, 
     },
     {
         "name": "ClientId",
-        "value": "Client ID from AAD service principal",
+        "value": "<Client ID for your AAD service principal>",
+    },
+    {
+        "name": "CloudName",
+        "value": "<Azure cloud name>",
+    },
+    {
+        "name": "DhmCreateVmnUri",
+        "value": "<Create function URL (from step 5)>",
+    },
+    {
+        "name": "DhmDeleteVmnUri",
+        "value": "<Delete function URL (from step 5)",
     },
     {
         "name": "FairfaxClientSecret",
-        "value": "Client secret from AAD service principal",
+        "value": "<Client secret>",
     },
     {
         "name": "Location",
-        "value": "usgovvirginia",
+        "value": "<Azure region>",
+    },
+    {
+        "name": "ResourceManagerUri",
+        "value": "https://management.azure.com/",
     },
     {
         "name": "SubscriptionId",
-        "value": "Your subscription id",
+        "value": "<Your subscription id>",
     },
     {
         "name": "TenantId",
-        "value": "Your tenant id",
+        "value": "<Your tenant id>",
     }
     ```
 
-3. Run the test Function to provision VMs on Dedicated Hosts
+8. Run the test Function to provision VMs on Dedicated Hosts
 
+# Next steps
+1. Add Acions to setup a DevOps pipeline
+2. Testing at scale and with concurrent scenarios
 
 # Contributing
 
