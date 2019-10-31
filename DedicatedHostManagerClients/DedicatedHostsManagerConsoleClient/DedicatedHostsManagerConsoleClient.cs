@@ -1,4 +1,5 @@
-﻿using Microsoft.Azure.Management.Compute;
+﻿using DedicatedHostClientHelpers;
+using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
@@ -7,7 +8,6 @@ using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Rest;
 using Newtonsoft.Json;
-using ScaleTestHelpers;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,12 +15,12 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DedicatedHostsTrafficGenerator
+namespace DedicatedHostsManagerConsoleClient
 {
     /// <summary>
     /// Console app to use as a client for the Dedicated Hosts Manager.
     /// </summary>
-    internal class Program
+    internal class DedicatedHostsManagerConsoleClient
     {
         private static readonly HttpClient HttpClient = new HttpClient();
 
@@ -28,7 +28,7 @@ namespace DedicatedHostsTrafficGenerator
         {
             var config = new ConfigurationBuilder()
              .SetBasePath(Directory.GetCurrentDirectory())
-             .AddUserSecrets<Program>()
+             .AddUserSecrets<DedicatedHostsManagerConsoleClient>()
              .Build();
 
             var resourceGroupName = config["ResourceGroupName"];

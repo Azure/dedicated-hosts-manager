@@ -2,7 +2,7 @@
 using System;
 using System.Threading.Tasks;
 
-namespace ScaleTestHelpers
+namespace DedicatedHostClientHelpers
 {
     /// <summary>
     /// Gets an AAD token for ARM operations, used by Dedicated Hosts Manager testing clients.
