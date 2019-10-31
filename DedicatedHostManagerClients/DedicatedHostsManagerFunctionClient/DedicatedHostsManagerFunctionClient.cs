@@ -12,19 +12,19 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Rest;
 using Newtonsoft.Json;
-using ScaleTestHelpers;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using DedicatedHostClientHelpers;
 
-namespace TrafficGeneratorFunction
+namespace DedicatedHostsManagerFunctionClient
 {
     /// <summary>
     /// Testing client for the Dedicated Hosts Manager library.
     /// </summary>
-    public class Function1TrafficGenTestFunction
+    public class DedicatedHostsManagerFunctionClient
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly HttpClient _httpClient;
@@ -40,7 +40,7 @@ namespace TrafficGeneratorFunction
         /// </summary>
         /// <param name="httpClientFactory">HTTP client factory.</param>
         /// <param name="configuration">Configuration.</param>
-        public Function1TrafficGenTestFunction(IHttpClientFactory httpClientFactory, IConfiguration configuration)
+        public DedicatedHostsManagerFunctionClient(IHttpClientFactory httpClientFactory, IConfiguration configuration)
         {
             _httpClientFactory = httpClientFactory;
             _httpClient = _httpClientFactory.CreateClient();

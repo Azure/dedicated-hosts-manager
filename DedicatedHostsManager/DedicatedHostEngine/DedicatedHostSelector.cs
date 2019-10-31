@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 
 namespace DedicatedHostsManager.DedicatedHostEngine
 {
@@ -21,6 +22,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
     public class DedicatedHostSelector : IDedicatedHostSelector
     {
         private readonly ILogger<DedicatedHostSelector> _logger;
+        private readonly IConfiguration _configuration;
         private readonly IDedicatedHostStateManager _dedicatedHostStateManager;
         private readonly IDhmComputeClient _dhmComputeClient;
 
@@ -29,15 +31,18 @@ namespace DedicatedHostsManager.DedicatedHostEngine
         /// </summary>
         /// <param name="logger">Logger.</param>
         /// <param name="dedicatedHostStateManager">Dedicated Host state management.</param>
+        /// <param name="configuration">Configuration.</param>
         /// <param name="dhmComputeClient">Dedicated Host compute client.</param>
         public DedicatedHostSelector(
             ILogger<DedicatedHostSelector> logger, 
             IDedicatedHostStateManager dedicatedHostStateManager,
+            IConfiguration configuration,
             IDhmComputeClient dhmComputeClient)
         {
             _logger = logger;
             _dedicatedHostStateManager = dedicatedHostStateManager;
             _dhmComputeClient = dhmComputeClient;
+            _configuration = configuration;
         }
 
         /// <summary>
@@ -126,15 +131,45 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 }
             }
 
-            if (!matchingHosts.Any())
+            return !matchingHosts.Any() ? null : SelectMostPackedHost(matchingHosts)?.Id;
+        }
+
+        /// <summary>
+        /// Select the most "packed" host.
+        /// </summary>
+        /// <param name="hostList">Dedicated Host collection.</param>
+        public DedicatedHost SelectMostPackedHost(IList<DedicatedHost> hostList)
+        {
+            double? minCount = double.MaxValue;
+            DedicatedHost selectedHost = null;
+
+            if (hostList == null)
             {
-                return null;
+                throw new ArgumentNullException(nameof(hostList));
             }
 
-            // TODO: Refactor matching host selection logic to allow configurable/custom selection.
-            // TODO: Return based on how packed the hosts are, for now return a random host
-            var randomHost = new Random().Next(matchingHosts.Count);
-            return matchingHosts[randomHost].Id;
+            if (hostList.Count() == 1)
+            {
+                return hostList.First();
+            }
+
+            foreach (var host in hostList)
+            {
+                var count = host.InstanceView?.AvailableCapacity?.AllocatableVMs?
+                    .First(v => v.VmSize.Equals(_configuration["HostSelectorVmSize"], StringComparison.InvariantCultureIgnoreCase)).Count;
+                if (count < minCount)
+                {
+                    minCount = count;
+                    selectedHost = host;
+                }
+            }
+
+            if (selectedHost == null)
+            {
+                _logger.LogError("Could not select a host from the given host list.");
+            }
+
+            return selectedHost;
         }
 
         /// <summary>

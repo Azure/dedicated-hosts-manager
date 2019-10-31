@@ -14,6 +14,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Xunit;
 using JsonConvert = Newtonsoft.Json.JsonConvert;
 
@@ -38,6 +39,7 @@ namespace DedicatedHostsManagerTests
             const string expectedHostId = "/subscriptions/6e412d70-9128-48a7-97b4-04e5bd35cefc/resourceGroups/63296244-ce2c-46d8-bc36-3e558792fbee/providers/Microsoft.Compute/hostGroups/citrix-dhg/hosts/20887a6e-0866-4bae-82b7-880839d9e76b";
             var loggerMock = new Mock<ILogger<DedicatedHostSelector>>();
             var dedicatedHostStateManagerMock = new Mock<IDedicatedHostStateManager>();
+            var configurationMock = new Mock<IConfiguration>();
             var dhmComputeClientMock = new Mock<IDhmComputeClient>();
             dedicatedHostStateManagerMock.Setup(s => s.IsHostAtCapacity(It.IsAny<string>())).Returns(false);
             var dedicatedHostList =
@@ -79,7 +81,11 @@ namespace DedicatedHostsManagerTests
                         It.IsAny<AzureEnvironment>()))
                 .ReturnsAsync(computeManagementClientMock.Object);
 
-            var dedicatedHostSelector = new DedicatedHostSelectorTest(loggerMock.Object, dedicatedHostStateManagerMock.Object, dhmComputeClientMock.Object);
+            var dedicatedHostSelector = new DedicatedHostSelectorTest(
+                loggerMock.Object, 
+                dedicatedHostStateManagerMock.Object, 
+                configurationMock.Object,
+                dhmComputeClientMock.Object);
             var actualHostId = await dedicatedHostSelector.SelectDedicatedHost(
                 Token,
                 AzureEnvironment.AzureUSGovernment,
@@ -92,13 +98,37 @@ namespace DedicatedHostsManagerTests
             Assert.Equal(actualHostId, expectedHostId);
         }
 
+        [Fact]
+        public void SelectMostPackedDedicatedHostTest()
+        {
+            const string expectedHostId = "/subscriptions/6e412d70-9128-48a7-97b4-04e5bd35cefc/resourceGroups/63296244-ce2c-46d8-bc36-3e558792fbee/providers/Microsoft.Compute/hostGroups/citrix-dhg/hosts/20887a6e-0866-4bae-82b7-880839d9e76b";
+            var loggerMock = new Mock<ILogger<DedicatedHostSelector>>();
+            var dedicatedHostStateManagerMock = new Mock<IDedicatedHostStateManager>();
+            var dhmComputeClientMock = new Mock<IDhmComputeClient>();
+            var configurationMock = new Mock<IConfiguration>();
+            configurationMock.Setup(s => s["HostSelectorVmSize"]).Returns("Standard_D2s_v3");
+            var dedicatedHostList =
+                JsonConvert.DeserializeObject<List<DedicatedHost>>(
+                    File.ReadAllText(@"TestData\dedicatedHostsInput2.json"));
+
+            var dedicatedHostSelector = new DedicatedHostSelectorTest(
+                loggerMock.Object,
+                dedicatedHostStateManagerMock.Object,
+                configurationMock.Object,
+                dhmComputeClientMock.Object);
+            var actualHostId = dedicatedHostSelector.SelectMostPackedHost(dedicatedHostList);
+
+            Assert.Equal(actualHostId.Id, expectedHostId);
+        }
+
         private class DedicatedHostSelectorTest : DedicatedHostSelector
         {
             public DedicatedHostSelectorTest(
                 ILogger<DedicatedHostSelector> logger, 
                 IDedicatedHostStateManager dedicatedHostStateManager,
+                IConfiguration configuration,
                 IDhmComputeClient dhmComputeClient) 
-                : base(logger, dedicatedHostStateManager, dhmComputeClient)
+                : base(logger, dedicatedHostStateManager, configuration, dhmComputeClient)
             {
             }
 

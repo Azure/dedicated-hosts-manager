@@ -5,7 +5,7 @@ using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
 using System;
 using System.Collections.Generic;
 
-namespace ScaleTestHelpers
+namespace DedicatedHostClientHelpers
 {
     /// <summary>
     /// Helper class used by testing clients to create VMs.
