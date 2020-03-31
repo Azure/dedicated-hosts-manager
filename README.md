@@ -4,6 +4,10 @@ Azure Dedicated Host (DH) provides physical servers that host one or more Azure 
 
 The Dedicated Hosts Manager library abstracts Host Management logic from users, and makes it easy for users to use DH. Users only need to specify the number and SKU of VMs that need to be allocated, and this library takes care of the rest. This library is packaged as an Azure Function that can be deployed in your subscription, and is easy to integrate with . The library is extensible and allows for customizing Host selection logic.
 
+# Support
+* Solution supports Azure Function runtime v3 
+* Developed and tested using VS 2019
+ 
 # Usage
 1. Create a Resource Group using the Azure portal/CLI.
 2. Deploy an Azure Function to your resource group.
