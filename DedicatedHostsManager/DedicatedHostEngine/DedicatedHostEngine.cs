@@ -45,7 +45,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
         /// <param name="dedicatedHostStateManager">Dedicated Host state manager.</param>
         /// <param name="dhmComputeClient">Dedicated Host compute client.</param>
         public DedicatedHostEngine(
-            ILogger<DedicatedHostEngine> logger, 
+            ILogger<DedicatedHostEngine> logger,
             IConfiguration configuration,
             IDedicatedHostSelector dedicatedHostSelector,
             ISyncProvider syncProvider,
@@ -76,8 +76,8 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             string token,
             AzureEnvironment azureEnvironment,
             string tenantId,
-            string subscriptionId, 
-            string resourceGroup, 
+            string subscriptionId,
+            string resourceGroup,
             string dhgName,
             string azName,
             int platformFaultDomainCount,
@@ -123,7 +123,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 new TokenCredentials(token),
                 tenantId,
                 azureEnvironment);
-        
+
             var newDedicatedHostGroup = new DedicatedHostGroup()
             {
                 Location = location,
@@ -132,12 +132,12 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
             if (!string.IsNullOrEmpty(azName))
             {
-                newDedicatedHostGroup.Zones = new List<string>{ azName };
+                newDedicatedHostGroup.Zones = new List<string> { azName };
             }
 
             var dhgCreateRetryCount = int.Parse(_configuration["DhgCreateRetryCount"]);
             var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
-                subscriptionId, 
+                subscriptionId,
                 azureCredentials,
                 azureEnvironment);
             var response = new AzureOperationResponse<DedicatedHostGroup>();
@@ -178,9 +178,9 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             string token,
             AzureEnvironment azureEnvironment,
             string tenantId,
-            string subscriptionId, 
-            string resourceGroup, 
-            string dhgName, 
+            string subscriptionId,
+            string resourceGroup,
+            string dhgName,
             string dhName,
             string dhSku,
             string location)
@@ -259,7 +259,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 new DedicatedHost
                 {
                     Location = location,
-                    Sku = new Sku() {Name = dhSku}
+                    Sku = new Sku() { Name = dhSku }
                 },
                 null);
         }
@@ -357,11 +357,11 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             var maxRetriesToCreateVm = int.Parse(_configuration["MaxRetriesToCreateVm"]);
             var dedicatedHostCacheTtlMin = int.Parse(_configuration["DedicatedHostCacheTtlMin"]);
             var vmCreationRetryCount = 0;
-            
+
             while ((string.IsNullOrEmpty(vmProvisioningState)
                    || !string.Equals(vmProvisioningState, "Succeeded", StringComparison.InvariantCultureIgnoreCase))
                    && vmCreationRetryCount < maxRetriesToCreateVm)
-            {             
+            {
                 if (string.IsNullOrEmpty(vmProvisioningState))
                 {
                     var dedicatedHostId = await GetDedicatedHostForVmPlacement(
@@ -375,7 +375,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                         vmName,
                         region.Name);
 
-                    _dedicatedHostStateManager.MarkHostUsage(dedicatedHostId.ToLower(), DateTimeOffset.Now.ToString(), TimeSpan.FromMinutes(dedicatedHostCacheTtlMin)); 
+                    _dedicatedHostStateManager.MarkHostUsage(dedicatedHostId.ToLower(), DateTimeOffset.Now.ToString(), TimeSpan.FromMinutes(dedicatedHostCacheTtlMin));
                     virtualMachine.Host = new SubResource(dedicatedHostId);
                     try
                     {
@@ -403,7 +403,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 if (string.Equals(vmProvisioningState, "Failed", StringComparison.InvariantCultureIgnoreCase))
                 {
                     _logger.LogMetric("VmProvisioningFailureCountMetric", 1);
-                    _dedicatedHostStateManager.MarkHostAtCapacity(virtualMachine.Host.Id.ToLower(), DateTimeOffset.Now.ToString(), TimeSpan.FromMinutes(dedicatedHostCacheTtlMin)); 
+                    _dedicatedHostStateManager.MarkHostAtCapacity(virtualMachine.Host.Id.ToLower(), DateTimeOffset.Now.ToString(), TimeSpan.FromMinutes(dedicatedHostCacheTtlMin));
                     var dedicatedHostId = await GetDedicatedHostForVmPlacement(
                         token,
                         azureEnvironment,
@@ -444,7 +444,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 await Policy
                     .Handle<CloudException>()
                     .WaitAndRetryAsync(
-                        retryCountToCheckVmState, 
+                        retryCountToCheckVmState,
                         r => TimeSpan.FromSeconds(2 * r),
                         onRetry: (ex, ts, r) =>
                             _logger.LogInformation(
@@ -559,7 +559,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                     await Policy
                         .Handle<StorageException>()
                         .WaitAndRetryAsync(
-                            lockRetryCount, 
+                            lockRetryCount,
                             r => TimeSpan.FromSeconds(2 * r),
                             (ex, ts, r) => _logger.LogInformation($"Attempt #{r.Count}/{lockRetryCount}. Will try again in {ts.TotalSeconds} seconds. Exception={ex}"))
                         .ExecuteAsync(async () =>
@@ -602,7 +602,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                                         subscriptionId,
                                         resourceGroup,
                                         hostGroupName,
-                                        "host-" + (new Random().Next(100,999)),
+                                        "host-" + (new Random().Next(100, 999)),
                                         hostSku,
                                         location);
 
@@ -634,7 +634,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             _logger.LogMetric("GetDedicatedHostTimeSecondsMetric", innerLoopStopwatch.Elapsed.TotalSeconds);
             _logger.LogInformation($"GetDedicatedHost: Took {innerLoopStopwatch.Elapsed.TotalSeconds} seconds to find a matching host {matchingHostId} for {vmName} of {requiredVmSize} SKU.");
             return matchingHostId;
-        } 
+        }
 
         /// <summary>
         /// List Dedicated Host groups.
@@ -771,13 +771,13 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                         _logger.LogInformation(
                             $"Could not get VM details for {vmName}. Attempt #{r}/{retryCountToCheckVm}. Will try again in {ts.TotalSeconds} seconds. Exception={ex}"))
                 .ExecuteAsync(async () =>
-                    {
-                        virtualMachine = await computeManagementClient.VirtualMachines.GetAsync(resourceGroup, vmName);
-                        hostId = virtualMachine?.Host?.Id;
-                        var hostName = hostId?.Split(new[] {'/'}).Last();
-                        await computeManagementClient.VirtualMachines.DeleteAsync(resourceGroup, vmName);
-                        dedicatedHost = await computeManagementClient.DedicatedHosts.GetAsync(resourceGroup, dedicatedHostGroup, hostName, InstanceViewTypes.InstanceView);
-                    });
+                {
+                    virtualMachine = await computeManagementClient.VirtualMachines.GetAsync(resourceGroup, vmName);
+                    hostId = virtualMachine?.Host?.Id;
+                    var hostName = hostId?.Split(new[] { '/' }).Last();
+                    await computeManagementClient.VirtualMachines.DeleteAsync(resourceGroup, vmName);
+                    dedicatedHost = await computeManagementClient.DedicatedHosts.GetAsync(resourceGroup, dedicatedHostGroup, hostName, InstanceViewTypes.InstanceView);
+                });
 
             if (string.IsNullOrEmpty(hostId))
             {
@@ -788,13 +788,116 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             if (dedicatedHost?.VirtualMachines.Count == 0)
             {
                 // Avoid locking for now; revisit if needed
-                _dedicatedHostStateManager.MarkHostForDeletion(hostId.ToLower(), DateTimeOffset.Now.ToString(), TimeSpan.FromMinutes(dedicatedHostCacheTtlMin)); 
+                _dedicatedHostStateManager.MarkHostForDeletion(hostId.ToLower(), DateTimeOffset.Now.ToString(), TimeSpan.FromMinutes(dedicatedHostCacheTtlMin));
                 if (!_dedicatedHostStateManager.IsHostInUsage(hostId.ToLower()))
                 {
                     await computeManagementClient.DedicatedHosts.DeleteAsync(resourceGroup, dedicatedHostGroup, dedicatedHost.Name);
                     _dedicatedHostStateManager.UnmarkHostForDeletion(hostId.ToLower());
                 }
             }
+        }
+
+        public async Task<IList<DedicatedHost>> PrepareDedicatedHostGroup(
+                string token,
+                AzureEnvironment azureEnvironment,
+                string tenantId, string subscriptionId,
+                string resourceGroup,
+                string dhGroupName,
+                string vmSku,
+                int vmInstances,
+                int? platformFaultDomain)
+        {
+            List<DedicatedHost> dedicatedHosts = default;
+
+            if (string.IsNullOrEmpty(token))
+            {
+                throw new ArgumentNullException(nameof(token));
+            }
+
+            if (azureEnvironment == null)
+            {
+                throw new ArgumentNullException(nameof(azureEnvironment));
+            }
+
+            if (string.IsNullOrEmpty(tenantId))
+            {
+                throw new ArgumentNullException(nameof(tenantId));
+            }
+
+            if (string.IsNullOrEmpty(subscriptionId))
+            {
+                throw new ArgumentException(nameof(subscriptionId));
+            }
+
+            if (string.IsNullOrEmpty(resourceGroup))
+            {
+                throw new ArgumentException(nameof(resourceGroup));
+            }
+
+            if (string.IsNullOrEmpty(dhGroupName))
+            {
+                throw new ArgumentException(nameof(dhGroupName));
+            }
+
+            if (string.IsNullOrEmpty(vmSku))
+            {
+                throw new ArgumentException(nameof(vmSku));
+            }
+             
+            var azureCredentials = new AzureCredentials(
+                new TokenCredentials(token),
+                new TokenCredentials(token),
+                tenantId,
+                azureEnvironment);
+
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                azureEnvironment);
+
+            // TODO: Exception Handling ? do we need to handle
+            var hostGroup = (await computeManagementClient.DedicatedHostGroups.GetWithHttpMessagesAsync(resourceGroup, dhGroupName)).Body;
+            
+            var location = hostGroup.Location; // Location of DH canot be different from Host Group.
+            var existingHostsOnDHGroup = await GetDedicatedHostsInHostGroup(
+                computeManagementClient,
+                token,
+                azureEnvironment,
+                tenantId,
+                subscriptionId,
+                resourceGroup,
+                dhGroupName);
+
+            var dhSku = GetVmToHostMapping(vmSku);
+            var vmCapacityPerHost = GetVmCapacityPerHost(dhSku, vmSku);
+
+            var numOfDedicatedHostsByFaultDomain = this.CalculatePlatformFaultDomainToHost(
+                hostGroup,
+                existingHostsOnDHGroup,
+                vmSku,
+                vmInstances,
+                vmCapacityPerHost,
+                platformFaultDomain);
+
+            if (numOfDedicatedHostsByFaultDomain.Any())
+            {
+                var createDhHostTasks = numOfDedicatedHostsByFaultDomain
+                .SelectMany(c => Enumerable.Repeat(c.fd, c.numberOfHosts))
+                .Select(pfd => computeManagementClient.DedicatedHosts.CreateOrUpdateWithHttpMessagesAsync(
+                                resourceGroup,
+                                dhGroupName,
+                                "host-" + (new Random().Next(100, 999)),
+                                new DedicatedHost
+                                {
+                                    Location = location,
+                                    Sku = new Sku() { Name = dhSku },
+                                    PlatformFaultDomain = pfd
+                                }));
+              var response = await Task.WhenAll(createDhHostTasks);
+              dedicatedHosts = response.Select(c => c.Body).ToList();
+            }
+
+            return dedicatedHosts;
         }
 
         /// <summary>
@@ -825,6 +928,123 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 azureCredentials,
                 azureEnvironment);
             return (await computeManagementClient.DedicatedHostGroups.GetAsync(resourceGroupName, hostGroupName)).Id;
+        }
+
+        private async Task<IList<DedicatedHost>> GetDedicatedHostsInHostGroup(
+                IComputeManagementClient computeManagementClient,           // TODO: Instead of recreating, would it be better to pass existing one ?
+                string token,
+                AzureEnvironment azureEnvironment,
+                string tenantId,
+                string subscriptionId,
+                string resourceGroup,
+                string dhGroupName)
+        {
+            var hostsInHostGroup = await this._dedicatedHostSelector.ListDedicatedHosts(
+                token,
+                azureEnvironment,
+                tenantId,
+                subscriptionId,
+                resourceGroup,
+                dhGroupName);
+       
+            var taskList = hostsInHostGroup.Select(
+                dedicatedHost => computeManagementClient.DedicatedHosts.GetWithHttpMessagesAsync(
+                      resourceGroup,
+                      dhGroupName,
+                      dedicatedHost.Name,
+                      InstanceViewTypes.InstanceView));
+
+            var response = await Task.WhenAll(taskList);
+            return response.Select(r => r.Body).ToList();
+        }
+
+        private int GetVmCapacityPerHost(string dhSku, string vmSku)
+        {
+            // TODO: Review
+            // Limitation -Simple calculation by Cores not feasible
+            // https://azure.microsoft.com/en-us/pricing/details/virtual-machines/dedicated-host/
+            // https://github.com/Azure/azure-sdk-for-net/issues/9428
+            // Additional endpoint reviewed - var resourceSkus = await computeManagementClient.ResourceSkus.ListAsync($"location eq '{locationForDh}'");
+            // ALTERNATIVE
+            // Create DH host one at atime and Calculate remaining VM Capacity ==> Performance impact  
+            return (dhSku) switch
+            {
+                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D2s_v3" => 32,
+                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D4s_v3" => 16,
+                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D8s_v3" => 8,
+                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D16s_v3" => 4,
+                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D32s_v3" => 2,
+                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D48s_v3" => 1,
+                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D64s_v3" => 1,
+                _ => throw new Exception($"Capacity mapping not found for DH Sku {dhSku} / VM Sku {vmSku} ")
+            }; 
+        }
+
+        private IList<(int fd, int numberOfHosts)> CalculatePlatformFaultDomainToHost(
+            DedicatedHostGroup dhGroup,
+            IList<DedicatedHost> existingHostsOnDHGroup,
+            string vmSku,
+            int vmInstancesRequested,
+            int vmCapacityPerHost,
+            int? platformFaultDomain)
+        {
+            var dedicatedHosts = new List<(int fd, int numberOfHosts)>();
+            var platformFaultDomains = DetermineFaultDomainsForPlacement(dhGroup.PlatformFaultDomainCount, platformFaultDomain);
+            var vmsRequiredPerFaultDomain = (int)Math.Round((decimal)vmInstancesRequested / platformFaultDomains.Length, MidpointRounding.ToPositiveInfinity);
+
+            foreach (var fd in platformFaultDomains)
+            {
+                var dhInFaultDomain = existingHostsOnDHGroup.Where(c => c.PlatformFaultDomain == fd);
+                var availableVMCapacityInFaultDomain = 0;
+                foreach (var host in dhInFaultDomain)
+                {
+                    // Existing hosts can be different sku then DH Sku determined for VM size.
+                    availableVMCapacityInFaultDomain += (int)(host.InstanceView?.AvailableCapacity?.AllocatableVMs?
+                        .FirstOrDefault(v => v.VmSize.Equals(vmSku, StringComparison.InvariantCultureIgnoreCase))?.Count ?? 0);
+                }
+
+                if (vmsRequiredPerFaultDomain > availableVMCapacityInFaultDomain)
+                {
+                    dedicatedHosts.Add((fd, (int)(Math.Round(((decimal)vmsRequiredPerFaultDomain - availableVMCapacityInFaultDomain) / vmCapacityPerHost, MidpointRounding.ToPositiveInfinity))));
+                }
+            }
+
+            return dedicatedHosts;
+            
+            int[] DetermineFaultDomainsForPlacement(int dhGroupFaultDomainCount, int? platformFaultDomain)
+            {
+                if (platformFaultDomain != null && platformFaultDomain > (dhGroupFaultDomainCount - 1))
+                {
+                    throw new Exception($"Invalid requested Platform Fault domain -Dedicated Host Group Fault Domains = {dhGroupFaultDomainCount}, requested Platform Fault domain = {platformFaultDomain}");
+                }
+
+                return platformFaultDomain switch
+                {
+                    0 => new int[] { 0 },
+                    1 => new int[] { 1 },
+                    2 => new int[] { 2 },
+                    _ => Enumerable.Range(0, dhGroupFaultDomainCount).ToArray() // As # of small, perf of using Range not significant
+                };
+            }
+        }
+
+        private string GetVmToHostMapping(string vmSku)
+        {
+            var vmToHostDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(_configuration["VmToHostMapping"]);
+            if (vmToHostDictionary == null || string.IsNullOrEmpty(vmToHostDictionary[vmSku]))
+            {
+                throw new Exception($"Cannot find a dedicated host SKU for the {vmSku}: vm to host mapping was null.");
+            }
+
+            var hostSku = vmToHostDictionary[vmSku];
+            _logger.LogInformation($"Host SKU {hostSku} will be used to host VM SKU {vmSku}.");
+            if (string.IsNullOrEmpty(hostSku))
+            {
+                throw new Exception(
+                    $"Cannot find a dedicated host SKU for the {vmSku}: vm to host mapping was null.");
+            }
+
+            return hostSku;
         }
     }
 }

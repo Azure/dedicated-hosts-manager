@@ -139,5 +139,27 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             string resourceGroup,
             string dedicatedHostGroup,
             string vmName);
+
+        /// <summary>
+        /// Creates a Dedicated Host.
+        /// </summary>
+        /// <param name="token">Auth token.</param>
+        /// <param name="azureEnvironment">Azure cloud.</param>
+        /// <param name="tenantId">Tenant ID.</param>
+        /// <param name="subscriptionId">Subscription ID.</param>
+        /// <param name="resourceGroup">Resource group.</param>
+        /// <param name="dhgName">Dedicated Host group name.</param>
+        /// <param name="dhName">Dedicated Host name.</param>
+        /// <param name="dhSku">Virtual Machine SKU to be hosted on Dedicated Hosts</param>
+        Task<IList<DedicatedHost>> PrepareDedicatedHostGroup(
+            string token,
+            AzureEnvironment azureEnvironment,
+            string tenantId,
+            string subscriptionId,
+            string resourceGroup,
+            string dhgName,
+            string vmSku,
+            int vmInstances,
+            int? platformFaultDomain);
     }
 }
