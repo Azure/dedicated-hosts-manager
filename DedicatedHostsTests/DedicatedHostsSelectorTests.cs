@@ -14,9 +14,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using Xunit;
-using JsonConvert = Newtonsoft.Json.JsonConvert;
+using Newtonsoft.Json;
+using DedicatedHostsManager;
 
 namespace DedicatedHostsManagerTests
 {
@@ -39,7 +39,7 @@ namespace DedicatedHostsManagerTests
             const string expectedHostId = "/subscriptions/6e412d70-9128-48a7-97b4-04e5bd35cefc/resourceGroups/63296244-ce2c-46d8-bc36-3e558792fbee/providers/Microsoft.Compute/hostGroups/citrix-dhg/hosts/20887a6e-0866-4bae-82b7-880839d9e76b";
             var loggerMock = new Mock<ILogger<DedicatedHostSelector>>();
             var dedicatedHostStateManagerMock = new Mock<IDedicatedHostStateManager>();
-            var configurationMock = new Mock<IConfiguration>();
+            var config = new Config();
             var dhmComputeClientMock = new Mock<IDhmComputeClient>();
             dedicatedHostStateManagerMock.Setup(s => s.IsHostAtCapacity(It.IsAny<string>())).Returns(false);
             var dedicatedHostList =
@@ -84,7 +84,7 @@ namespace DedicatedHostsManagerTests
             var dedicatedHostSelector = new DedicatedHostSelectorTest(
                 loggerMock.Object, 
                 dedicatedHostStateManagerMock.Object, 
-                configurationMock.Object,
+                config,
                 dhmComputeClientMock.Object);
             var actualHostId = await dedicatedHostSelector.SelectDedicatedHost(
                 Token,
@@ -105,8 +105,8 @@ namespace DedicatedHostsManagerTests
             var loggerMock = new Mock<ILogger<DedicatedHostSelector>>();
             var dedicatedHostStateManagerMock = new Mock<IDedicatedHostStateManager>();
             var dhmComputeClientMock = new Mock<IDhmComputeClient>();
-            var configurationMock = new Mock<IConfiguration>();
-            configurationMock.Setup(s => s["HostSelectorVmSize"]).Returns("Standard_D2s_v3");
+            var config = new Config();
+            config.HostSelectorVmSize = "Standard_D2s_v3";
             var dedicatedHostList =
                 JsonConvert.DeserializeObject<List<DedicatedHost>>(
                     File.ReadAllText(@"TestData\dedicatedHostsInput2.json"));
@@ -114,7 +114,7 @@ namespace DedicatedHostsManagerTests
             var dedicatedHostSelector = new DedicatedHostSelectorTest(
                 loggerMock.Object,
                 dedicatedHostStateManagerMock.Object,
-                configurationMock.Object,
+                config,
                 dhmComputeClientMock.Object);
             var actualHostId = dedicatedHostSelector.SelectMostPackedHost(dedicatedHostList);
 
@@ -126,9 +126,9 @@ namespace DedicatedHostsManagerTests
             public DedicatedHostSelectorTest(
                 ILogger<DedicatedHostSelector> logger, 
                 IDedicatedHostStateManager dedicatedHostStateManager,
-                IConfiguration configuration,
+                Config config,
                 IDhmComputeClient dhmComputeClient) 
-                : base(logger, dedicatedHostStateManager, configuration, dhmComputeClient)
+                : base(logger, dedicatedHostStateManager, config, dhmComputeClient)
             {
             }
 

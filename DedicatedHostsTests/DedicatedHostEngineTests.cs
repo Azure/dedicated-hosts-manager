@@ -1,3 +1,4 @@
+using DedicatedHostsManager;
 using DedicatedHostsManager.ComputeClient;
 using DedicatedHostsManager.DedicatedHostEngine;
 using DedicatedHostsManager.DedicatedHostStateManager;
@@ -45,8 +46,8 @@ namespace DedicatedHostsManagerTests
         {
             var mockDhg = new DedicatedHostGroup(Location, PlatformFaultDomainCount, null, HostGroupName);
             var loggerMock = new Mock<ILogger<DedicatedHostEngine>>();
-            var configurationMock = new Mock<IConfiguration>();
-            configurationMock.Setup(s => s["DhgCreateRetryCount"]).Returns("1");
+            var config = new Config();
+            config.DhgCreateRetryCount = 1;
             var dedicatedHostSelectorMock = new Mock<IDedicatedHostSelector>();
             var syncProviderMock = new Mock<ISyncProvider>();
             var dedicatedHostStateManagerMock = new Mock<IDedicatedHostStateManager>();
@@ -75,7 +76,7 @@ namespace DedicatedHostsManagerTests
 
             var dedicatedHostEngineTest = new DedicatedHostEngineTest(
                 loggerMock.Object,
-                configurationMock.Object,
+                config,
                 dedicatedHostSelectorMock.Object,
                 syncProviderMock.Object,
                 dedicatedHostStateManagerMock.Object,
@@ -100,7 +101,7 @@ namespace DedicatedHostsManagerTests
         public async Task GetDedicatedHostForVmPlacementTest()
         {
             var loggerMock = new Mock<ILogger<DedicatedHostEngine>>();
-            var configurationMock = new Mock<IConfiguration>();
+            var configurationMock = new Mock<Config>();
             var dedicatedHostSelectorMock = new Mock<IDedicatedHostSelector>();
             var syncProviderMock = new Mock<ISyncProvider>();
             var dedicatedHostStateManagerMock = new Mock<IDedicatedHostStateManager>();
@@ -160,7 +161,7 @@ namespace DedicatedHostsManagerTests
             // Arrange
             var hostGroupName = "TestDH";
             var loggerMock = new Mock<ILogger<DedicatedHostEngine>>();
-            var configurationMock = new Mock<IConfiguration>();
+            var config = new Config();
             var dedicatedHostSelectorMock = new Mock<IDedicatedHostSelector>();
             var syncProviderMock = new Mock<ISyncProvider>();
             var dedicatedHostStateManagerMock = new Mock<IDedicatedHostStateManager>();
@@ -168,7 +169,7 @@ namespace DedicatedHostsManagerTests
             var computeManagementClientMock = new Mock<IComputeManagementClient>();
 
             // *** Mock Configuration
-            configurationMock.Setup(s => s["VmToHostMapping"]).Returns("{\"Standard_D2s_v3\":\"DSv3-Type1\"}");
+            config.DedicatedHostMapping = "[{\"family\":\"DSv3\",\"hostMapping\":[{\"region\":\"default\",\"host\":{\"type\":\"DSv3-Type1\",\"vmMapping\":[{\"size\":\"Standard_D2s_v3\",\"capacity\":32}]}}]}]";
 
             // *** Mock Get Host Group call
             computeManagementClientMock
@@ -224,7 +225,7 @@ namespace DedicatedHostsManagerTests
 
             var dedicatedHostEngine = new DedicatedHostEngine(
                 loggerMock.Object,
-                configurationMock.Object,
+                config,
                 dedicatedHostSelectorMock.Object,
                 syncProviderMock.Object,
                 dedicatedHostStateManagerMock.Object,
@@ -252,14 +253,14 @@ namespace DedicatedHostsManagerTests
         {
             public DedicatedHostEngineTest(
                 ILogger<DedicatedHostEngine> logger,
-                IConfiguration configuration,
+                Config config,
                 IDedicatedHostSelector dedicatedHostSelector,
                 ISyncProvider syncProvider,
                 IDedicatedHostStateManager dedicatedHostStateManager,
                 IDhmComputeClient dhmComputeClient)
                 : base(
                     logger,
-                    configuration,
+                    config,
                     dedicatedHostSelector,
                     syncProvider,
                     dedicatedHostStateManager,

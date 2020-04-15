@@ -1,7 +1,6 @@
 ﻿using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Polly;
@@ -21,21 +20,21 @@ namespace DedicatedHostsManager.ComputeClient
     {
         private static IComputeManagementClient _computeManagementClient;
         private readonly HttpClient _httpClient;
-        private readonly IConfiguration _configuration;
+        private readonly Config _config;
         private readonly ILogger<DedicatedHostStateManager.DedicatedHostStateManager> _logger;
 
         /// <summary>
         /// Initializes a new instance of the DhmComputeClient class.
         /// </summary>
-        /// <param name="configuration">Configuration.</param>
+        /// <param name="config">Configuration.</param>
         /// <param name="logger">Logger.</param>
         /// <param name="httpClientFactory">To create an HTTP client.</param>
         public DhmComputeClient(
-            IConfiguration configuration, 
+            Config config, 
             ILogger<DedicatedHostStateManager.DedicatedHostStateManager> logger,
             IHttpClientFactory httpClientFactory)
         {
-            _configuration = configuration;
+            _config = config;
             _logger = logger;
             _httpClient = httpClientFactory.CreateClient();
         }
@@ -58,8 +57,8 @@ namespace DedicatedHostsManager.ComputeClient
             {
                 SubscriptionId = subscriptionId,
                 BaseUri = baseUri,
-                LongRunningOperationRetryTimeout = int.Parse(_configuration["ComputeClientLongRunningOperationRetryTimeoutSeconds"]),
-                HttpClient = { Timeout = TimeSpan.FromMinutes(int.Parse(_configuration["ComputeClientHttpTimeoutMin"])) }
+                LongRunningOperationRetryTimeout = _config.ComputeClientLongRunningOperationRetryTimeoutSeconds,
+                HttpClient = { Timeout = TimeSpan.FromMinutes(_config.ComputeClientHttpTimeoutMin) }
             });
         }
 
@@ -70,7 +69,7 @@ namespace DedicatedHostsManager.ComputeClient
         
         private async Task<Uri> GetResourceManagerEndpoint(AzureEnvironment azureEnvironment)
         {
-            var armMetadataRetryCount = int.Parse(_configuration["GetArmMetadataRetryCount"]);
+            var armMetadataRetryCount = _config.GetArmMetadataRetryCount;
             HttpResponseMessage armResponseMessage = null;
             await Policy
                 .Handle<HttpRequestException>()
@@ -82,7 +81,7 @@ namespace DedicatedHostsManager.ComputeClient
                             $"Could not retrieve ARM metadata. Attempt #{r}/{armMetadataRetryCount}. Will try again in {ts.TotalSeconds} seconds. Exception={ex}"))
                 .ExecuteAsync(async () =>
                     {
-                        armResponseMessage = await _httpClient.GetAsync(_configuration["GetArmMetadataUrl"]);
+                        armResponseMessage = await _httpClient.GetAsync(_config.GetArmMetadataUrl);
                     });
 
             if (armResponseMessage == null || armResponseMessage?.StatusCode != HttpStatusCode.OK)

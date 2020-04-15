@@ -6,12 +6,10 @@ using Microsoft.Azure.Management.Compute.Models;
 using Microsoft.Azure.Management.ResourceManager.Fluent;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Authentication;
 using Microsoft.Azure.Management.ResourceManager.Fluent.Core;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Rest;
 using Microsoft.Rest.Azure;
 using Microsoft.WindowsAzure.Storage;
-using Newtonsoft.Json;
 using Polly;
 using System;
 using System.Collections.Generic;
@@ -29,7 +27,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
     public class DedicatedHostEngine : IDedicatedHostEngine
     {
         private readonly ILogger<DedicatedHostEngine> _logger;
-        private readonly IConfiguration _configuration;
+        private readonly Config _config;
         private readonly IDedicatedHostSelector _dedicatedHostSelector;
         private readonly ISyncProvider _syncProvider;
         private readonly IDedicatedHostStateManager _dedicatedHostStateManager;
@@ -46,14 +44,14 @@ namespace DedicatedHostsManager.DedicatedHostEngine
         /// <param name="dhmComputeClient">Dedicated Host compute client.</param>
         public DedicatedHostEngine(
             ILogger<DedicatedHostEngine> logger,
-            IConfiguration configuration,
+            Config config,
             IDedicatedHostSelector dedicatedHostSelector,
             ISyncProvider syncProvider,
             IDedicatedHostStateManager dedicatedHostStateManager,
             IDhmComputeClient dhmComputeClient)
         {
             _logger = logger;
-            _configuration = configuration;
+            _config = config;
             _dedicatedHostSelector = dedicatedHostSelector;
             _syncProvider = syncProvider;
             _dedicatedHostStateManager = dedicatedHostStateManager;
@@ -135,7 +133,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 newDedicatedHostGroup.Zones = new List<string> { azName };
             }
 
-            var dhgCreateRetryCount = int.Parse(_configuration["DhgCreateRetryCount"]);
+            var dhgCreateRetryCount = _config.DhgCreateRetryCount;
             var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
                 subscriptionId,
                 azureCredentials,
@@ -351,11 +349,11 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 azureEnvironment);
             VirtualMachine response = null;
             var vmProvisioningState = virtualMachine.ProvisioningState;
-            var minIntervalToCheckForVmInSeconds = int.Parse(_configuration["MinIntervalToCheckForVmInSeconds"]);
-            var maxIntervalToCheckForVmInSeconds = int.Parse(_configuration["MaxIntervalToCheckForVmInSeconds"]);
-            var retryCountToCheckVmState = int.Parse(_configuration["RetryCountToCheckVmState"]);
-            var maxRetriesToCreateVm = int.Parse(_configuration["MaxRetriesToCreateVm"]);
-            var dedicatedHostCacheTtlMin = int.Parse(_configuration["DedicatedHostCacheTtlMin"]);
+            var minIntervalToCheckForVmInSeconds = _config.MinIntervalToCheckForVmInSeconds;
+            var maxIntervalToCheckForVmInSeconds = _config.MaxIntervalToCheckForVmInSeconds;
+            var retryCountToCheckVmState = _config.RetryCountToCheckVmState;
+            var maxRetriesToCreateVm = _config.MaxRetriesToCreateVm;
+            var dedicatedHostCacheTtlMin = _config.DedicatedHostCacheTtlMin;
             var vmCreationRetryCount = 0;
 
             while ((string.IsNullOrEmpty(vmProvisioningState)
@@ -547,7 +545,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
                 if (string.IsNullOrEmpty(matchingHostId))
                 {
-                    var lockRetryCount = int.Parse(_configuration["LockRetryCount"]);
+                    var lockRetryCount = _config.LockRetryCount;
                     var hostGroupId = await GetDedicatedHostGroupId(
                         token,
                         azureEnvironment,
@@ -581,20 +579,8 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                                 if (string.IsNullOrEmpty(matchingHostId))
                                 {
                                     _logger.LogInformation($"Creating a new host.");
-                                    var vmToHostDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(_configuration["VmToHostMapping"]);
-                                    if (vmToHostDictionary == null || string.IsNullOrEmpty(vmToHostDictionary[requiredVmSize]))
-                                    {
-                                        throw new Exception($"Cannot find a dedicated host SKU for the {requiredVmSize}: vm to host mapping was null.");
-                                    }
-
-                                    var hostSku = vmToHostDictionary[requiredVmSize];
-                                    _logger.LogInformation($"Host SKU {hostSku} will be used to host VM SKU {requiredVmSize}.");
-                                    if (string.IsNullOrEmpty(hostSku))
-                                    {
-                                        throw new Exception(
-                                            $"Cannot find a dedicated host SKU for the {requiredVmSize}: vm to host mapping was null.");
-                                    }
-
+                                    var hostSku = GetVmToHostMapping(requiredVmSize);
+                                    
                                     var newDedicatedHostResponse = await CreateDedicatedHost(
                                         token,
                                         azureEnvironment,
@@ -757,8 +743,8 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 subscriptionId,
                 azureCredentials,
                 azureEnvironment);
-            var retryCountToCheckVm = int.Parse(_configuration["RetryCountToCheckVmState"]);
-            var dedicatedHostCacheTtlMin = int.Parse(_configuration["DedicatedHostCacheTtlMin"]);
+            var retryCountToCheckVm = _config.RetryCountToCheckVmState;
+            var dedicatedHostCacheTtlMin = _config.DedicatedHostCacheTtlMin;
             VirtualMachine virtualMachine = null;
             DedicatedHost dedicatedHost = null;
             string hostId = null;
@@ -867,9 +853,8 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 subscriptionId,
                 resourceGroup,
                 dhGroupName);
-
-            var dhSku = GetVmToHostMapping(vmSku);
-            var vmCapacityPerHost = GetVmCapacityPerHost(dhSku, vmSku);
+             
+            var (dhSku, vmCapacityPerHost) = GetVmCapacityPerHost(location, vmSku);
 
             var numOfDedicatedHostsByFaultDomain = this.CalculatePlatformFaultDomainToHost(
                 hostGroup,
@@ -958,28 +943,6 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             return response.Select(r => r.Body).ToList();
         }
 
-        private int GetVmCapacityPerHost(string dhSku, string vmSku)
-        {
-            // TODO: Review
-            // Limitation -Simple calculation by Cores not feasible
-            // https://azure.microsoft.com/en-us/pricing/details/virtual-machines/dedicated-host/
-            // https://github.com/Azure/azure-sdk-for-net/issues/9428
-            // Additional endpoint reviewed - var resourceSkus = await computeManagementClient.ResourceSkus.ListAsync($"location eq '{locationForDh}'");
-            // ALTERNATIVE
-            // Create DH host one at atime and Calculate remaining VM Capacity ==> Performance impact  
-            return (dhSku) switch
-            {
-                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D2s_v3" => 32,
-                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D4s_v3" => 16,
-                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D8s_v3" => 8,
-                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D16s_v3" => 4,
-                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D32s_v3" => 2,
-                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D48s_v3" => 1,
-                _ when dhSku == "DSv3-Type1" && vmSku == "Standard_D64s_v3" => 1,
-                _ => throw new Exception($"Capacity mapping not found for DH Sku {dhSku} / VM Sku {vmSku} ")
-            }; 
-        }
-
         private IList<(int fd, int numberOfHosts)> CalculatePlatformFaultDomainToHost(
             DedicatedHostGroup dhGroup,
             IList<DedicatedHost> existingHostsOnDHGroup,
@@ -1028,9 +991,29 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             }
         }
 
+        private (string dhSku, int vmCapacity) GetVmCapacityPerHost(string location, string vmSku)
+        {
+            var matchingConfig = _config.DedicatedHostConfigurationTable
+                .Where(c => (c.Location == "default" || c.Location.Equals(location, StringComparison.OrdinalIgnoreCase))
+                    && c.VmSku == vmSku);
+
+            if (!matchingConfig.Any())
+            {
+                throw new Exception($"DhSku mapping not found for default OR Location {location} / VM Sku {vmSku}");
+            }
+
+            var regionSpecific = matchingConfig.SingleOrDefault(c => c.Location == location);
+            if (regionSpecific != null)
+            {
+                return (regionSpecific.DhSku, regionSpecific.VmCapacity);
+            }
+            var defaultSetting = matchingConfig.Single(c => c.Location == "default");
+            return (defaultSetting.DhSku, defaultSetting.VmCapacity);
+        }
+
         private string GetVmToHostMapping(string vmSku)
         {
-            var vmToHostDictionary = JsonConvert.DeserializeObject<Dictionary<string, string>>(_configuration["VmToHostMapping"]);
+            var vmToHostDictionary = _config.VirtualMachineToHostMapping;
             if (vmToHostDictionary == null || string.IsNullOrEmpty(vmToHostDictionary[vmSku]))
             {
                 throw new Exception($"Cannot find a dedicated host SKU for the {vmSku}: vm to host mapping was null.");

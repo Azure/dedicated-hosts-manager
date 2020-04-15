@@ -1,5 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System;
 
@@ -11,7 +10,7 @@ namespace DedicatedHostsManager.DedicatedHostStateManager
     public class DedicatedHostStateManager : IDedicatedHostStateManager
     {
         private static readonly object LockObject = new object();
-        private readonly IConfiguration _configuration;
+        private readonly Config _config;
         private readonly ILogger<DedicatedHostStateManager> _logger;
         private readonly int _hostCapacityDbIndex;
         private readonly int _hostDeletionDbIndex;
@@ -22,13 +21,13 @@ namespace DedicatedHostsManager.DedicatedHostStateManager
         /// <summary>
         /// Initializes the state manager.
         /// </summary>
-        /// <param name="configuration">Configuration.</param>
+        /// <param name="config">Configuration.</param>
         /// <param name="logger">Logging.</param>
-        public DedicatedHostStateManager(IConfiguration configuration, ILogger<DedicatedHostStateManager> logger)
+        public DedicatedHostStateManager(Config config, ILogger<DedicatedHostStateManager> logger)
         {
-            _configuration = configuration;
+            _config = config;
             _logger = logger;
-            _redisCacheConnection = _configuration.GetConnectionString("RedisConnectionString");
+            _redisCacheConnection = _config.ConnectionStrings.RedisConnectionString;
             _hostCapacityDbIndex = 0;
             _hostDeletionDbIndex = 1;
             _hostUsageDbIndex = 2;
@@ -55,9 +54,9 @@ namespace DedicatedHostsManager.DedicatedHostStateManager
 
                     _connectionMultiplexer?.Dispose();
                     var configurationOptions = ConfigurationOptions.Parse(_redisCacheConnection);
-                    configurationOptions.ConnectTimeout = int.Parse(_configuration["RedisConnectTimeoutMilliseconds"]);
-                    configurationOptions.SyncTimeout = int.Parse(_configuration["RedisSyncTimeoutMilliseconds"]);
-                    configurationOptions.ConnectRetry = int.Parse(_configuration["RedisConnectRetryCount"]);
+                    configurationOptions.ConnectTimeout = _config.RedisConnectTimeoutMilliseconds;
+                    configurationOptions.SyncTimeout = _config.RedisSyncTimeoutMilliseconds;
+                    configurationOptions.ConnectRetry = _config.RedisConnectRetryCount;
                     configurationOptions.AbortOnConnectFail = false;
                     configurationOptions.Ssl = true;
                     _connectionMultiplexer = ConnectionMultiplexer.Connect(configurationOptions);
