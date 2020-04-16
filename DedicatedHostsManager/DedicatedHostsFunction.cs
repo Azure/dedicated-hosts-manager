@@ -343,6 +343,7 @@ namespace DedicatedHostsManager
                     $"PrepareDedicatedHostGroup: Took {sw.Elapsed.TotalSeconds}s");
                 log.LogMetric("PrepareDedicatedHostGroupTimeSecondsMetric", sw.Elapsed.TotalSeconds);
                 log.LogMetric("PrepareDedicatedHostGroupSuccessCountMetric", 1);
+                 
                 return new OkObjectResult(prepareDedicatedHostGroupResponse);
             }
             catch (Exception exception)

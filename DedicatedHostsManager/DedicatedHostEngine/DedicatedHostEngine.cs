@@ -896,7 +896,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 }
             }
 
-            return dedicatedHosts;
+            return dedicatedHosts ?? new List<DedicatedHost>();
         }
 
         /// <summary>

@@ -405,7 +405,7 @@ namespace DedicatedHostsManagerFunctionClient
             if (response.StatusCode != HttpStatusCode.OK)
             {
                 // Hack as InternalServerErrorFault does not have message option
-                return new ObjectResult(new { error = $"Exception thrown by by {await response.Content.ReadAsStringAsync()}" })
+                return new ObjectResult(new { error = $"Exception thrown by {await response.Content.ReadAsStringAsync()}" })
                 {
                     StatusCode = 500
                 };
