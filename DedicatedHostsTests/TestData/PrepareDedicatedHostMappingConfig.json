@@ -1,0 +1,31 @@
+[
+  {
+    "family": "DSv3",
+    "hostMapping": [
+      {
+        "region": "default",
+        "host": {
+          "type": "DSv3-Type1",
+          "vmMapping": [
+            {
+              "size": "Standard_D2s_v3",
+              "capacity": 32
+            }
+          ]
+        }
+      },
+      {
+        "region": "usgoviowa",
+        "host": {
+          "type": "DSv3-Type2",
+          "vmMapping": [
+            {
+              "size": "Standard_D2s_v3",
+              "capacity": 32
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

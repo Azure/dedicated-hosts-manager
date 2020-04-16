@@ -404,7 +404,11 @@ namespace DedicatedHostsManagerFunctionClient
             var response = await _httpClient.GetAsync(prepareDHGroup);
             if (response.StatusCode != HttpStatusCode.OK)
             {
-                return new InternalServerErrorResult();
+                // Hack as InternalServerErrorFault does not have message option
+                return new ObjectResult(new { error = $"Exception thrown by by {await response.Content.ReadAsStringAsync()}" })
+                {
+                    StatusCode = 500
+                };
             }
             var dhCreated = await response.Content.ReadAsAsync<List<DedicatedHost>>();
             return new OkObjectResult($"Prepared Dedicated Host Group completed successfully {string.Join(",", dhCreated.Select(c => c.Name))} VM.");

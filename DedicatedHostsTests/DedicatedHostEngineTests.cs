@@ -169,8 +169,7 @@ namespace DedicatedHostsManagerTests
             var computeManagementClientMock = new Mock<IComputeManagementClient>();
 
             // *** Mock Configuration
-            config.DedicatedHostMapping = "[{\"family\":\"DSv3\",\"hostMapping\":[{\"region\":\"default\",\"host\":{\"type\":\"DSv3-Type1\",\"vmMapping\":[{\"size\":\"Standard_D2s_v3\",\"capacity\":32}]}}]}]";
-
+            config.DedicatedHostMapping = File.ReadAllText(@"TestData\PrepareDedicatedHostMappingConfig.json");
             // *** Mock Get Host Group call
             computeManagementClientMock
                  .Setup(
@@ -243,10 +242,10 @@ namespace DedicatedHostsManagerTests
                 vmInstanceToCreate,
                 platformFD);
 
-            // Assert  
-            // TODO: Using fluent Assertion, Change other Tests too ?
-            (addedHosts ?? (new List<DedicatedHost>())).Select(p => new { p.Location, p.PlatformFaultDomain, p.Sku })
-                .Should().BeEquivalentTo(expectedHostsToBeCreated.Select(p => new { p.Location, p.PlatformFaultDomain, p.Sku }));
+            (addedHosts ?? (new List<DedicatedHost>()))
+                .Select(p => new { p.Location, p.PlatformFaultDomain, p.Sku })
+                .Should().BeEquivalentTo(expectedHostsToBeCreated
+                    .Select(p => new { p.Location, p.PlatformFaultDomain, p.Sku }));
         }
 
         private class DedicatedHostEngineTest : DedicatedHostEngine
@@ -403,9 +402,9 @@ namespace DedicatedHostsManagerTests
             // PlatformFaultDomainCount for DHG > 1, No existing Hosts, should create as expected
             new object[] {
                 Region.GovernmentUSVirginia.Name,
-                2,
+                1,
                 null,
-                60,             // 60 / 2 Fault Domains = 30  required to be added per FD  0 & FD 1
+                30,             // 30 / 1 Fault Domains = 30  requires creating 1 host
                 new List<DedicatedHost>(){                   
                 },
                 new List<DedicatedHost>()
@@ -413,11 +412,22 @@ namespace DedicatedHostsManagerTests
                     new DedicatedHost(
                         location: Region.GovernmentUSVirginia.Name,
                         sku: new Sku(){Name="DSv3-Type1"},
-                        platformFaultDomain: 0),
+                        platformFaultDomain: 0)                 }
+            },
+            // Region specific configuration to be applied if location specific config exists
+            new object[] {
+                Region.GovernmentUSIowa.Name,
+                1,
+                null,
+                30,             // 30 / 1 Fault Domains  -> requires creating 1 Host but of type "DSv3-type2"
+                new List<DedicatedHost>(){
+                },
+                new List<DedicatedHost>()
+                {
                     new DedicatedHost(
-                        location: Region.GovernmentUSVirginia.Name,
-                        sku: new Sku(){Name="DSv3-Type1"},
-                        platformFaultDomain: 1)
+                        location: Region.GovernmentUSIowa.Name,
+                        sku: new Sku(){Name="DSv3-Type2"},
+                        platformFaultDomain: 0) 
                 }
             }
         };

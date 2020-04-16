@@ -580,7 +580,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                                 {
                                     _logger.LogInformation($"Creating a new host.");
                                     var hostSku = GetVmToHostMapping(requiredVmSize);
-                                    
+
                                     var newDedicatedHostResponse = await CreateDedicatedHost(
                                         token,
                                         azureEnvironment,
@@ -829,7 +829,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             {
                 throw new ArgumentException(nameof(vmSku));
             }
-             
+
             var azureCredentials = new AzureCredentials(
                 new TokenCredentials(token),
                 new TokenCredentials(token),
@@ -843,17 +843,16 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
             // TODO: Exception Handling ? do we need to handle
             var hostGroup = (await computeManagementClient.DedicatedHostGroups.GetWithHttpMessagesAsync(resourceGroup, dhGroupName)).Body;
-            
+
             var location = hostGroup.Location; // Location of DH canot be different from Host Group.
             var existingHostsOnDHGroup = await GetDedicatedHostsInHostGroup(
-                computeManagementClient,
                 token,
                 azureEnvironment,
                 tenantId,
                 subscriptionId,
                 resourceGroup,
                 dhGroupName);
-             
+
             var (dhSku, vmCapacityPerHost) = GetVmCapacityPerHost(location, vmSku);
 
             var numOfDedicatedHostsByFaultDomain = this.CalculatePlatformFaultDomainToHost(
@@ -878,8 +877,23 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                                     Sku = new Sku() { Name = dhSku },
                                     PlatformFaultDomain = pfd
                                 }));
-              var response = await Task.WhenAll(createDhHostTasks);
-              dedicatedHosts = response.Select(c => c.Body).ToList();
+                var bulkTask = Task.WhenAll(createDhHostTasks);
+                try
+                {
+                    var response = await bulkTask;
+                    dedicatedHosts = response.Select(c => c.Body).ToList();
+                }
+                catch(Exception ex)
+                {
+                    if (bulkTask?.Exception?.InnerExceptions != null && bulkTask.Exception.InnerExceptions.Any())
+                    {
+                        throw new Exception($"Creation of Dedicated Host failed with exceptions : \n {string.Join(",\n", bulkTask.Exception.InnerExceptions.Select(c => c?.Message + "\n"))}");
+                    }
+                    else
+                    {
+                        throw new Exception($"Unexpected exception thrown {ex?.Message}");
+                    }
+                }
             }
 
             return dedicatedHosts;
@@ -916,7 +930,6 @@ namespace DedicatedHostsManager.DedicatedHostEngine
         }
 
         private async Task<IList<DedicatedHost>> GetDedicatedHostsInHostGroup(
-                IComputeManagementClient computeManagementClient,           // TODO: Instead of recreating, would it be better to pass existing one ?
                 string token,
                 AzureEnvironment azureEnvironment,
                 string tenantId,
@@ -924,6 +937,18 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 string resourceGroup,
                 string dhGroupName)
         {
+
+            var azureCredentials = new AzureCredentials(
+                new TokenCredentials(token),
+                new TokenCredentials(token),
+                tenantId,
+                azureEnvironment);
+
+            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
+                subscriptionId,
+                azureCredentials,
+                azureEnvironment);
+
             var hostsInHostGroup = await this._dedicatedHostSelector.ListDedicatedHosts(
                 token,
                 azureEnvironment,
@@ -931,7 +956,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 subscriptionId,
                 resourceGroup,
                 dhGroupName);
-       
+
             var taskList = hostsInHostGroup.Select(
                 dedicatedHost => computeManagementClient.DedicatedHosts.GetWithHttpMessagesAsync(
                       resourceGroup,
@@ -973,7 +998,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             }
 
             return dedicatedHosts;
-            
+
             int[] DetermineFaultDomainsForPlacement(int dhGroupFaultDomainCount, int? platformFaultDomain)
             {
                 if (platformFaultDomain != null && platformFaultDomain > (dhGroupFaultDomainCount - 1))
