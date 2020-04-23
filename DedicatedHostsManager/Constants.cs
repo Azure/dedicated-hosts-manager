@@ -18,8 +18,6 @@
         public const string AvailabilityZone = "availabilityZone";
         public const string Location = "location";
         public const string PlatformFaultDomainCount = "platformFaultDomainCount";
-
-        // TODO: SJP - Verify the naming convention
         public const string PlatformFaultDomain = "platformFaultDomain";
         public const string VmCount = "vmCount";
     }
