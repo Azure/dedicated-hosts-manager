@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using SubResource = Microsoft.Azure.Management.Compute.Models.SubResource;
@@ -841,17 +842,10 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 azureCredentials,
                 azureEnvironment);
 
-            // TODO: Exception Handling ? do we need to handle
-            var hostGroup = (await computeManagementClient.DedicatedHostGroups.GetWithHttpMessagesAsync(resourceGroup, dhGroupName)).Body;
-
+            var dhgCreateRetryCount = _config.DhgCreateRetryCount;
+            var hostGroup = await GetDedicatedHostGroup();
             var location = hostGroup.Location; // Location of DH canot be different from Host Group.
-            var existingHostsOnDHGroup = await GetDedicatedHostsInHostGroup(
-                token,
-                azureEnvironment,
-                tenantId,
-                subscriptionId,
-                resourceGroup,
-                dhGroupName);
+            var existingHostsOnDHGroup = await GetExistingHostsOnDHGroup();
 
             var (dhSku, vmCapacityPerHost) = GetVmCapacityPerHost(location, vmSku);
 
@@ -863,40 +857,87 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 vmCapacityPerHost,
                 platformFaultDomain);
 
-            if (numOfDedicatedHostsByFaultDomain.Any())
+            await CreateDedicatedHosts();
+            
+            return dedicatedHosts ?? new List<DedicatedHost>();
+            
+            async Task<DedicatedHostGroup> GetDedicatedHostGroup()
             {
-                var createDhHostTasks = numOfDedicatedHostsByFaultDomain
-                .SelectMany(c => Enumerable.Repeat(c.fd, c.numberOfHosts))
-                .Select(pfd => computeManagementClient.DedicatedHosts.CreateOrUpdateWithHttpMessagesAsync(
-                                resourceGroup,
-                                dhGroupName,
-                                "host-" + (new Random().Next(100, 999)),
-                                new DedicatedHost
-                                {
-                                    Location = location,
-                                    Sku = new Sku() { Name = dhSku },
-                                    PlatformFaultDomain = pfd
-                                }));
-                var bulkTask = Task.WhenAll(createDhHostTasks);
                 try
                 {
-                    var response = await bulkTask;
-                    dedicatedHosts = response.Select(c => c.Body).ToList();
+                    return (await computeManagementClient.DedicatedHostGroups.GetWithHttpMessagesAsync(resourceGroup, dhGroupName)).Body;
                 }
-                catch(Exception ex)
+                catch(CloudException ce) when (ce.Message.Contains("not found"))
                 {
-                    if (bulkTask?.Exception?.InnerExceptions != null && bulkTask.Exception.InnerExceptions.Any())
-                    {
-                        throw new Exception($"Creation of Dedicated Host failed with exceptions : \n {string.Join(",\n", bulkTask.Exception.InnerExceptions.Select(c => c?.Message + "\n"))}");
-                    }
-                    else
-                    {
-                        throw new Exception($"Unexpected exception thrown {ex?.Message}");
-                    }
+                    throw new ArgumentException($"Dedicated Host Group name '{dhGroupName}' does not exist under resource group '{resourceGroup}'");
                 }
             }
 
-            return dedicatedHosts ?? new List<DedicatedHost>();
+            async Task<List<DedicatedHost>> GetExistingHostsOnDHGroup()
+            {
+                var hostsInHostGroup = await this._dedicatedHostSelector.ListDedicatedHosts(
+                            token,
+                            azureEnvironment,
+                            tenantId,
+                            subscriptionId,
+                            resourceGroup,
+                            dhGroupName);
+
+                var taskList = hostsInHostGroup.Select(
+                    dedicatedHost => computeManagementClient.DedicatedHosts.GetWithHttpMessagesAsync(
+                                                          resourceGroup,
+                                                          dhGroupName,
+                                                          dedicatedHost.Name,
+                                                          InstanceViewTypes.InstanceView));
+
+                var response = await Task.WhenAll(taskList);
+                return response.Select(r => r.Body).ToList();
+            }
+
+            async Task CreateDedicatedHosts()
+            {
+                if (numOfDedicatedHostsByFaultDomain.Any())
+                {
+                    var createDhHostTasks = numOfDedicatedHostsByFaultDomain
+                    .SelectMany(c => Enumerable.Repeat(c.fd, c.numberOfHosts))
+                    .Select(pfd => Policy.Handle<CloudException>()
+                                .WaitAndRetryAsync(
+                                    _config.DhgCreateRetryCount,
+                                    r => TimeSpan.FromSeconds(2 * r),
+                                    (ex, ts, r) =>
+                                        _logger.LogInformation(
+                                            $"Create host on  Dedicated Host Group Fault Domain {pfd} failed. Attempt #{r}/{dhgCreateRetryCount}. Will try again in {ts.TotalSeconds} seconds. Exception={ex}"))
+                                .ExecuteAsync(() =>
+                                    computeManagementClient.DedicatedHosts.CreateOrUpdateWithHttpMessagesAsync(
+                                                resourceGroup,
+                                                dhGroupName,
+                                                "host-" + (new Random().Next(100, 999)),
+                                                new DedicatedHost
+                                                {
+                                                    Location = location,
+                                                    Sku = new Sku() { Name = dhSku },
+                                                    PlatformFaultDomain = pfd
+                                                })
+                                ));
+                    var bulkTask = Task.WhenAll(createDhHostTasks);
+                    try
+                    {
+                        var response = await bulkTask;
+                        dedicatedHosts = response.Select(c => c.Body).ToList();
+                    }
+                    catch (Exception ex)
+                    {
+                        if (bulkTask?.Exception?.InnerExceptions != null && bulkTask.Exception.InnerExceptions.Any())
+                        {
+                            throw new Exception($"Creation of Dedicated Host failed with exceptions : \n {string.Join(",\n", bulkTask.Exception.InnerExceptions.Select(c => c?.Message + "\n"))}");
+                        }
+                        else
+                        {
+                            throw new Exception($"Unexpected exception thrown {ex?.Message}");
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -927,45 +968,6 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 azureCredentials,
                 azureEnvironment);
             return (await computeManagementClient.DedicatedHostGroups.GetAsync(resourceGroupName, hostGroupName)).Id;
-        }
-
-        private async Task<IList<DedicatedHost>> GetDedicatedHostsInHostGroup(
-                string token,
-                AzureEnvironment azureEnvironment,
-                string tenantId,
-                string subscriptionId,
-                string resourceGroup,
-                string dhGroupName)
-        {
-
-            var azureCredentials = new AzureCredentials(
-                new TokenCredentials(token),
-                new TokenCredentials(token),
-                tenantId,
-                azureEnvironment);
-
-            var computeManagementClient = await _dhmComputeClient.GetComputeManagementClient(
-                subscriptionId,
-                azureCredentials,
-                azureEnvironment);
-
-            var hostsInHostGroup = await this._dedicatedHostSelector.ListDedicatedHosts(
-                token,
-                azureEnvironment,
-                tenantId,
-                subscriptionId,
-                resourceGroup,
-                dhGroupName);
-
-            var taskList = hostsInHostGroup.Select(
-                dedicatedHost => computeManagementClient.DedicatedHosts.GetWithHttpMessagesAsync(
-                      resourceGroup,
-                      dhGroupName,
-                      dedicatedHost.Name,
-                      InstanceViewTypes.InstanceView));
-
-            var response = await Task.WhenAll(taskList);
-            return response.Select(r => r.Body).ToList();
         }
 
         private IList<(int fd, int numberOfHosts)> CalculatePlatformFaultDomainToHost(

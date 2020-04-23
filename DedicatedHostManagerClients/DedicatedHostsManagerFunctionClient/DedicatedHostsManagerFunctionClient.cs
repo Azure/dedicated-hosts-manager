@@ -404,10 +404,9 @@ namespace DedicatedHostsManagerFunctionClient
             var response = await _httpClient.GetAsync(prepareDHGroup);
             if (response.StatusCode != HttpStatusCode.OK)
             {
-                // Hack as InternalServerErrorFault does not have message option
                 return new ObjectResult(new { error = $"Exception thrown by {await response.Content.ReadAsStringAsync()}" })
                 {
-                    StatusCode = 500
+                    StatusCode = (int)response.StatusCode
                 };
             }
             var dhCreated = await response.Content.ReadAsAsync<List<DedicatedHost>>();

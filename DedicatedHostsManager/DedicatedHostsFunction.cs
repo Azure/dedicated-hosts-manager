@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System;
 using System.Diagnostics;
+using System.Net;
 using System.Threading.Tasks;
 using ExecutionContext = Microsoft.Azure.WebJobs.ExecutionContext;
 
@@ -245,9 +246,9 @@ namespace DedicatedHostsManager
         /// <param name="req">HTTP request.</param>
         /// <param name="log">Logger.</param>
         /// <param name="context">Function execution context.</param>
-        [FunctionName("PrepareDedicatedHostGroup")]         // TODO: SJP - Why Pascal case ? 
+        [FunctionName("PrepareDedicatedHostGroup")]
         public async Task<IActionResult> PrepareDedicatedHostGroup(
-            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] // TODO: SJP - Why both Get/Post
+            [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]
             HttpRequest req,
             ILogger log,
             ExecutionContext context)
@@ -346,12 +347,19 @@ namespace DedicatedHostsManager
                  
                 return new OkObjectResult(prepareDedicatedHostGroupResponse);
             }
+            catch (ArgumentException exception)
+            {
+                log.LogError(
+                    $"PrepareDedicatedHostGroup: Validation Error creating {parameters[Constants.DedicatedHostGroupName]}, time spent: {sw.Elapsed.TotalSeconds}s, Exception: {exception}");
+                log.LogMetric("PrepareDedicatedHostGroupFailureCountMetric", 1);
+                return new BadRequestObjectResult(exception.ToString());
+            }
             catch (Exception exception)
             {
                 log.LogError(
                     $"PrepareDedicatedHostGroup: Error creating {parameters[Constants.DedicatedHostGroupName]}, time spent: {sw.Elapsed.TotalSeconds}s, Exception: {exception}");
                 log.LogMetric("PrepareDedicatedHostGroupFailureCountMetric", 1);
-                return new BadRequestObjectResult(exception.ToString());
+                return new ObjectResult(exception.ToString()) { StatusCode = (int)HttpStatusCode.InternalServerError };
             }
         }
     }

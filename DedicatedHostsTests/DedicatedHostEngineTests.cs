@@ -17,6 +17,7 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
@@ -178,7 +179,9 @@ namespace DedicatedHostsManagerTests
                         It.IsAny<string>(),
                         null,
                         It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new AzureOperationResponse<DedicatedHostGroup>() { Body = new DedicatedHostGroup(location, platformFDCount, null, hostGroupName) });
+                .ReturnsAsync(new AzureOperationResponse<DedicatedHostGroup>() { 
+                    Response = new System.Net.Http.HttpResponseMessage(HttpStatusCode.OK),
+                                    Body = new DedicatedHostGroup(location, platformFDCount, null, hostGroupName) });
 
             // *** Mock Existing Host information call
             existingHosts.ForEach(dh =>
