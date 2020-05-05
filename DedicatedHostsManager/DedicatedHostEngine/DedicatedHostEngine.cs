@@ -32,7 +32,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
         private readonly IDedicatedHostSelector _dedicatedHostSelector;
         private readonly ISyncProvider _syncProvider;
         private readonly IDedicatedHostStateManager _dedicatedHostStateManager;
-        private readonly IDhmComputeClient _dhmComputeClient;
+        private readonly IDhmComputeClient _dhmComputeClient; 
 
         /// <summary>
         /// Initializes the Dedicated Host engine.
@@ -860,17 +860,14 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             await CreateDedicatedHosts();
             
             return dedicatedHosts ?? new List<DedicatedHost>();
-            
+             
             async Task<DedicatedHostGroup> GetDedicatedHostGroup()
-            {
-                try
-                {
-                    return (await computeManagementClient.DedicatedHostGroups.GetWithHttpMessagesAsync(resourceGroup, dhGroupName)).Body;
-                }
-                catch(CloudException ce) when (ce.Message.Contains("not found"))
-                {
-                    throw new ArgumentException($"Dedicated Host Group name '{dhGroupName}' does not exist under resource group '{resourceGroup}'");
-                }
+            { 
+                var response = await Helper.ExecuteAsyncWithRetry<CloudException, AzureOperationResponse<DedicatedHostGroup>>(
+                            funcToexecute: () => computeManagementClient.DedicatedHostGroups.GetWithHttpMessagesAsync(resourceGroup, dhGroupName),
+                            logHandler: (retryMsg) => _logger.LogWarning($"Get Dedicated Host Group '{dhGroupName} failed.' {retryMsg}"),
+                            exceptionFilter: ce => !ce.Message.Contains("not found"));
+                return response.Body;
             }
 
             async Task<List<DedicatedHost>> GetExistingHostsOnDHGroup()
@@ -884,12 +881,14 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                             dhGroupName);
 
                 var taskList = hostsInHostGroup.Select(
-                    dedicatedHost => computeManagementClient.DedicatedHosts.GetWithHttpMessagesAsync(
+                    dedicatedHost => Helper.ExecuteAsyncWithRetry<CloudException, AzureOperationResponse<DedicatedHost>>(
+                            () => computeManagementClient.DedicatedHosts.GetWithHttpMessagesAsync(
                                                           resourceGroup,
                                                           dhGroupName,
                                                           dedicatedHost.Name,
-                                                          InstanceViewTypes.InstanceView));
-
+                                                          InstanceViewTypes.InstanceView),
+                            (retryMsg) => _logger.LogWarning($"Get details for Dedicated Host '{dedicatedHost.Name} failed.' {retryMsg}"))); 
+                             
                 var response = await Task.WhenAll(taskList);
                 return response.Select(r => r.Body).ToList();
             }
@@ -900,15 +899,8 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                 {
                     var createDhHostTasks = numOfDedicatedHostsByFaultDomain
                     .SelectMany(c => Enumerable.Repeat(c.fd, c.numberOfHosts))
-                    .Select(pfd => Policy.Handle<CloudException>()
-                                .WaitAndRetryAsync(
-                                    _config.DhgCreateRetryCount,
-                                    r => TimeSpan.FromSeconds(2 * r),
-                                    (ex, ts, r) =>
-                                        _logger.LogInformation(
-                                            $"Create host on  Dedicated Host Group Fault Domain {pfd} failed. Attempt #{r}/{dhgCreateRetryCount}. Will try again in {ts.TotalSeconds} seconds. Exception={ex}"))
-                                .ExecuteAsync(() =>
-                                    computeManagementClient.DedicatedHosts.CreateOrUpdateWithHttpMessagesAsync(
+                    .Select(pfd => Helper.ExecuteAsyncWithRetry<CloudException, AzureOperationResponse<DedicatedHost>>(
+                            funcToexecute: () => computeManagementClient.DedicatedHosts.CreateOrUpdateWithHttpMessagesAsync(
                                                 resourceGroup,
                                                 dhGroupName,
                                                 "host-" + (new Random().Next(100, 999)),
@@ -917,13 +909,16 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                                                     Location = location,
                                                     Sku = new Sku() { Name = dhSku },
                                                     PlatformFaultDomain = pfd
-                                                })
-                                ));
+                                                }),
+                            logHandler: (retryMsg) => _logger.LogWarning($"Create host on  Dedicated Host Group Fault Domain {pfd} failed.' {retryMsg}"),
+                            retryCount: _config.DhgCreateRetryCount));
+
                     var bulkTask = Task.WhenAll(createDhHostTasks);
                     try
                     {
                         var response = await bulkTask;
                         dedicatedHosts = response.Select(c => c.Body).ToList();
+                        _logger.LogInformation(@$"Following dedicated hosts created created successfully : {string.Join(",", dedicatedHosts.Select(d => d.Name))}");
                     }
                     catch (Exception ex)
                     {
