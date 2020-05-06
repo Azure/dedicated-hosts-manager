@@ -865,7 +865,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             { 
                 var response = await Helper.ExecuteAsyncWithRetry<CloudException, AzureOperationResponse<DedicatedHostGroup>>(
                             funcToexecute: () => computeManagementClient.DedicatedHostGroups.GetWithHttpMessagesAsync(resourceGroup, dhGroupName),
-                            logHandler: (retryMsg) => _logger.LogWarning($"Get Dedicated Host Group '{dhGroupName} failed.' {retryMsg}"),
+                            logHandler: (retryMsg) => _logger.LogInformation($"Get Dedicated Host Group '{dhGroupName} failed.' {retryMsg}"),
                             exceptionFilter: ce => !ce.Message.Contains("not found"));
                 return response.Body;
             }
@@ -887,7 +887,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                                                           dhGroupName,
                                                           dedicatedHost.Name,
                                                           InstanceViewTypes.InstanceView),
-                            (retryMsg) => _logger.LogWarning($"Get details for Dedicated Host '{dedicatedHost.Name} failed.' {retryMsg}"))); 
+                            (retryMsg) => _logger.LogInformation($"Get details for Dedicated Host '{dedicatedHost.Name} failed.' {retryMsg}"))); 
                              
                 var response = await Task.WhenAll(taskList);
                 return response.Select(r => r.Body).ToList();
@@ -910,7 +910,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
                                                     Sku = new Sku() { Name = dhSku },
                                                     PlatformFaultDomain = pfd
                                                 }),
-                            logHandler: (retryMsg) => _logger.LogWarning($"Create host on  Dedicated Host Group Fault Domain {pfd} failed.' {retryMsg}"),
+                            logHandler: (retryMsg) => _logger.LogInformation($"Create host on  Dedicated Host Group Fault Domain {pfd} failed.' {retryMsg}"),
                             retryCount: _config.DhgCreateRetryCount));
 
                     var bulkTask = Task.WhenAll(createDhHostTasks);
@@ -990,7 +990,9 @@ namespace DedicatedHostsManager.DedicatedHostEngine
 
                 if (vmsRequiredPerFaultDomain > availableVMCapacityInFaultDomain)
                 {
-                    dedicatedHosts.Add((fd, (int)(Math.Round(((decimal)vmsRequiredPerFaultDomain - availableVMCapacityInFaultDomain) / vmCapacityPerHost, MidpointRounding.ToPositiveInfinity))));
+                    var fdHostsToBeAdded = (int)(Math.Round(((decimal)vmsRequiredPerFaultDomain - availableVMCapacityInFaultDomain) / vmCapacityPerHost, MidpointRounding.ToPositiveInfinity));
+                    dedicatedHosts.Add((fd, fdHostsToBeAdded));
+                    _logger.LogInformation(@$"{fdHostsToBeAdded} Hosts to be added to PlatformFaultDomain - '{fd}'");
                 }
             }
 
