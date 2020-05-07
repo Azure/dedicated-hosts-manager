@@ -12,7 +12,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 
 namespace DedicatedHostsManager.DedicatedHostEngine
 {
@@ -22,7 +21,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
     public class DedicatedHostSelector : IDedicatedHostSelector
     {
         private readonly ILogger<DedicatedHostSelector> _logger;
-        private readonly IConfiguration _configuration;
+        private readonly Config _config;
         private readonly IDedicatedHostStateManager _dedicatedHostStateManager;
         private readonly IDhmComputeClient _dhmComputeClient;
 
@@ -31,18 +30,18 @@ namespace DedicatedHostsManager.DedicatedHostEngine
         /// </summary>
         /// <param name="logger">Logger.</param>
         /// <param name="dedicatedHostStateManager">Dedicated Host state management.</param>
-        /// <param name="configuration">Configuration.</param>
+        /// <param name="config">Configuration.</param>
         /// <param name="dhmComputeClient">Dedicated Host compute client.</param>
         public DedicatedHostSelector(
             ILogger<DedicatedHostSelector> logger, 
             IDedicatedHostStateManager dedicatedHostStateManager,
-            IConfiguration configuration,
+            Config config,
             IDhmComputeClient dhmComputeClient)
         {
             _logger = logger;
             _dedicatedHostStateManager = dedicatedHostStateManager;
             _dhmComputeClient = dhmComputeClient;
-            _configuration = configuration;
+            _config = config;
         }
 
         /// <summary>
@@ -156,7 +155,7 @@ namespace DedicatedHostsManager.DedicatedHostEngine
             foreach (var host in hostList)
             {
                 var count = host.InstanceView?.AvailableCapacity?.AllocatableVMs?
-                    .First(v => v.VmSize.Equals(_configuration["HostSelectorVmSize"], StringComparison.InvariantCultureIgnoreCase)).Count;
+                    .First(v => v.VmSize.Equals(_config.HostSelectorVmSize, StringComparison.InvariantCultureIgnoreCase)).Count;
                 if (count < minCount)
                 {
                     minCount = count;

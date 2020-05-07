@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Blob;
@@ -12,7 +11,7 @@ namespace DedicatedHostsManager.Sync
     /// </summary>
     public class SyncProvider : ISyncProvider
     {
-        private readonly IConfiguration _configuration;
+        private readonly Config _config;
         private readonly ILogger<SyncProvider> _logger;
         private readonly CloudBlobContainer _cloudBlobContainer;
         private string _lease;
@@ -20,15 +19,15 @@ namespace DedicatedHostsManager.Sync
         /// <summary>
         /// Initialize sync provider.
         /// </summary>
-        /// <param name="configuration">Configuration.</param>
+        /// <param name="config">Configuration.</param>
         /// <param name="logger">Logging.</param>
-        public SyncProvider(IConfiguration configuration, ILogger<SyncProvider> logger)
+        public SyncProvider(Config config, ILogger<SyncProvider> logger)
         {
-            _configuration = configuration;
+            _config = config;
             _logger = logger;
-            var storageAccount = CloudStorageAccount.Parse(_configuration.GetConnectionString("StorageConnectionString"));
+            var storageAccount = CloudStorageAccount.Parse(_config.ConnectionStrings.StorageConnectionString);
             var blobClient = storageAccount.CreateCloudBlobClient();
-            _cloudBlobContainer = blobClient.GetContainerReference(_configuration["LockContainerName"]);
+            _cloudBlobContainer = blobClient.GetContainerReference(_config.LockContainerName);
         }
 
         /// <summary>
@@ -44,7 +43,7 @@ namespace DedicatedHostsManager.Sync
                 await blockBlob.UploadTextAsync(blobName);
             }
 
-            var lockIntervalInSeconds = int.Parse(_configuration["LockIntervalInSeconds"]);
+            var lockIntervalInSeconds = _config.LockIntervalInSeconds;
             _lease = await blockBlob.AcquireLeaseAsync(TimeSpan.FromSeconds(lockIntervalInSeconds), null);
             _logger.LogInformation($"Acquired lock for {blockBlob}");
         }

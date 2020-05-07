@@ -2,8 +2,14 @@
 # Dedicated Hosts Manager
 Azure Dedicated Host (DH) provides physical servers that host one or more Azure virtual machines; host-level isolation means that capacity is dedicated to your organization and servers are not shared with other customers. To use DH, users currently need to manage DH themselves - e.g. when to spin up or spin down Hosts, determine VM placement on Hosts, bin pack VMs compactly on Hosts to minimize Host usage and optimize for cost, or use another Host selection strategy, manage VM creation traffic burst scenarios, etc.
 
-The Dedicated Hosts Manager library abstracts Host Management logic from users, and makes it easy for users to use DH. Users only need to specify the number and SKU of VMs that need to be allocated, and this library takes care of the rest. This library is packaged as an Azure Function that can be deployed in your subscription, and is easy to integrate with . The library is extensible and allows for customizing Host selection logic.
+The Dedicated Hosts Manager library abstracts Host Management logic from users, and makes it easy for users to use DH.
+* **CreateVm**: Users only need to specify the number and SKU of VMs that need to be allocated, and this library takes care of the rest. 
+* **DeleteVM** Users need to specify VM to delete and library will also deallocate any Host that have no allocated VM.s
+* **PrepareDedicatedHostGroup** This call to the Dedicated Host Manager library will prepare the host group by creating sufficient number of dedicated hosts so that a future call to VM or VMSS creation will be successful. 
+ 
+This library is packaged as an Azure Function that can be deployed in your subscription, and is easy to integrate with . The library is extensible and allows for customizing Host selection logic.
 
+ 
 # Support
 * Solution supports Azure Function runtime v3 
 * Developed and tested using VS 2019
@@ -92,7 +98,11 @@ The Dedicated Hosts Manager library abstracts Host Management logic from users, 
         "name": "VmToHostMapping",
         "value": "{\"Standard_D2s_v3\":\"DSv3-Type1\",\"Standard_D4s_v3\":\"DSv3-Type1\",\"Standard_D8s_v3\":\"DSv3-Type1\",\"Standard_D16s_v3\":\"DSv3-Type1\",\"Standard_D32-8s_v3\":\"DSv3-Type1\",\"Standard_D32-16s_v3\":\"DSv3-Type1\",\"Standard_D32s_v3\":\"DSv3-Type1\",\"Standard_D48s_v3\":\"DSv3-Type1\",\"Standard_D64-16s_v3\":\"DSv3-Type1\",\"Standard_D64-32s_v3\":\"DSv3-Type1\",\"Standard_D64s_v3\":\"DSv3-Type1\",\"Standard_E2s_v3\":\"ESv3-Type1\",\"Standard_E4s_v3\":\"ESv3-Type1\",\"Standard_E8s_v3\":\"ESv3-Type1\",\"Standard_E16s_v3\":\"ESv3-Type1\",\"Standard_E32-8s_v3\":\"ESv3-Type1\",\"Standard_E32-16s_v3\":\"ESv3-Type1\",\"Standard_E32s_v3\":\"ESv3-Type1\",\"Standard_E48s_v3\":\"ESv3-Type1\",\"Standard_E64-16s_v3\":\"ESv3-Type1\",\"Standard_E64-32s_v3\":\"ESv3-Type1\",\"Standard_E64s_v3\":\"ESv3-Type1\",\"Standard_F2s_v3\":\"FSv2-Type2\",\"Standard_F4s_v3\":\"FSv2-Type2\",\"Standard_F8s_v3\":\"FSv2-Type2\",\"Standard_F16s_v3\":\"FSv2-Type2\",\"Standard_F32-8s_v3\":\"FSv2-Type2\",\"Standard_F32-16s_v3\":\"FSv2-Type2\",\"Standard_F32s_v3\":\"FSv2-Type2\",\"Standard_F48s_v3\":\"FSv2-Type2\",\"Standard_F64-16s_v3\":\"FSv2-Type2\",\"Standard_F64-32s_v3\":\"FSv2-Type2\",\"Standard_F64s_v3\":\"FSv2-Type2\"}",
     }
-
+    ,
+    {
+        "name": "DedicatedHostMapping",
+        "value": "[{\"family\":\"DSv3\",\"hostMapping\":[{\"region\":\"default\",\"host\":{\"type\":\"DSv3-Type1\",\"vmMapping\":[{\"size\":\"Standard_D2s_v3\",\"capacity\":32},{\"size\":\"Standard_D4s_v3\",\"capacity\":16},{\"size\":\"Standard_D8s_v3\",\"capacity\":8},{\"size\":\"Standard_D16s_v3\",\"capacity\":4},{\"size\":\"Standard_D32s_v3\",\"capacity\":2},{\"size\":\"Standard_D48s_v3\",\"capacity\":1},{\"size\":\"Standard_D64s_v3\",\"capacity\":1}]}}]}]",
+    }
     ```
     _Connection strings:_
     ```json
@@ -134,6 +144,10 @@ The Dedicated Hosts Manager library abstracts Host Management logic from users, 
     {
         "name": "DhmDeleteVmnUri",
         "value": "<Delete function URL (from step 5)",
+    },
+    {
+        "name": "PrepareDHGroupUri",
+        "value": "<PrepareDedicatedHostGroup function URL (from step 5)",
     },
     {
         "name": "FairfaxClientSecret",
