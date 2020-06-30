@@ -2,7 +2,7 @@
 
 * Solution supports Azure Function runtime v3 
 * Developed and tested using VS 2019
-* 
+
 ## Projects
 * DedicatedHostManager
 Core project and entry point for DedicatedHostManager functionality (Azure Function)
