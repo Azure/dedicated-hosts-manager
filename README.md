@@ -15,8 +15,11 @@ This library is packaged as an Azure Function that can be deployed in your subsc
 * Developed and tested using VS 2019
  
 # Usage
+
+![Deployment Graph](docs/images/deploymentgraph.PNG)
+## Setup DedicatedHostManager
 1. Create a Resource Group using the Azure portal/CLI.
-2. Deploy an Azure Function to your resource group.
+2. Deploy an Azure Function to your resource group.<br>Note: Azure Function is Auth is configured by means of authorization keys.
 3. Create a storage account in your resource group.
 4. Create an Azure Redis cache in your resource group.
 5. Deploy the Dedicated Hosts Manager function in your resource group, and setup the below config.
@@ -28,7 +31,7 @@ This library is packaged as an Azure Function that can be deployed in your subsc
     },
     {
         "name": "ComputeClientHttpTimeoutMin",
-        "value": "30",
+        "value": "5",
     },
     {
         "name": "ComputeClientLongRunningOperationRetryTimeoutSeconds",
@@ -40,7 +43,7 @@ This library is packaged as an Azure Function that can be deployed in your subsc
     },
     {
         "name": "DhgCreateRetryCount",
-        "value": "10",
+        "value": "3",
     },
     {
         "name": "GetArmMetadataRetryCount",
@@ -115,9 +118,10 @@ This library is packaged as an Azure Function that can be deployed in your subsc
         "value": "<Your redis connection string>",
     }
     ```
-
-6. Integrate the Dedicated Host Manager library/function to proxy create/delete VM calls for your existing code. 
-7. If needed, deploy the Dedicated Host Manager Test client (function) in your resource group with the below config.
+## Sample Client Apps 
+Integrate the Dedicated Host Manager library/function to proxy create/delete VM calls for your existing code.(\Under DedicatedHostManagerClients)
+1. If needed, deploy the Dedicated Host Manager Test client (function) in your resource group or Console App on your local machine
+2. Configure application settings on the Client app.
 
     _Application settings:_
     ```json
@@ -130,48 +134,51 @@ This library is packaged as an Azure Function that can be deployed in your subsc
         "value": "https://management.usgovcloudapi.net/",
     },
     {
-        "name": "ClientId",
-        "value": "<Client ID for your AAD service principal>",
-    },
-    {
         "name": "CloudName",
         "value": "<Azure cloud name>",
-    },
-    {
-        "name": "DhmCreateVmnUri",
-        "value": "<Create function URL (from step 5)>",
-    },
-    {
-        "name": "DhmDeleteVmnUri",
-        "value": "<Delete function URL (from step 5)",
-    },
-    {
-        "name": "PrepareDHGroupUri",
-        "value": "<PrepareDedicatedHostGroup function URL (from step 5)",
-    },
-    {
-        "name": "FairfaxClientSecret",
-        "value": "<Client secret>",
-    },
-    {
-        "name": "Location",
-        "value": "<Azure region>",
     },
     {
         "name": "ResourceManagerUri",
         "value": "https://management.azure.com/",
     },
     {
-        "name": "SubscriptionId",
-        "value": "<Your subscription id>",
+        "name": "TenantId",
+        "value": "<Target tenant id>",
     },
     {
-        "name": "TenantId",
-        "value": "<Your tenant id>",
+        "name": "SubscriptionId",
+        "value": "<Target subscription id>",
+    },
+    {
+        "name": "ClientId",
+        "value": "<Client ID for your AAD service principal on Traget Tenant>",
+    },
+    {
+        "name": "FairfaxClientSecret",
+        "value": "<Client secret on Target Tenant - Note: Fairfax prefix to this app setting has no bearing.>",
+    },
+    {
+        "name": "Location",
+        "value": "<Target Azure region>",
+    },
+    {
+        "name": "DhmCreateVmnUri",
+        "value": "<Create function URL with API key (from step 5 of 'Setup DedicatedHostManager')>",
+    },
+    {
+        "name": "DhmDeleteVmnUri",
+        "value": "<Delete function URL with API key(from step 5 of 'Setup DedicatedHostManager')",
+    },
+    {
+        "name": "PrepareDHGroupUri",
+        "value": "<PrepareDedicatedHostGroup function URL with API key (from step 5 if 'Setup DedicatedHostManager')",
     }
     ```
 
-8. Run the test Function to provision VMs on Dedicated Hosts
+8. Run the test Function Or Local Console Client to provision VMs on Dedicated Hosts 
+
+# Solution details
+For additional information pertaining to code, refer to [Solution Graph](docs/README.md)
 
 # Next steps
 1. Add Acions to setup a DevOps pipeline
