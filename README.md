@@ -19,7 +19,7 @@ This library is packaged as an Azure Function that can be deployed in your subsc
 ![Deployment Graph](docs/images/deploymentgraph.PNG)
 ## Setup DedicatedHostManager
 1. Create a Resource Group using the Azure portal/CLI.
-2. Deploy an Azure Function to your resource group.<br>Note: Azure Function is Auth is configured by means of authorization keys.
+2. Deploy an Azure Function to your resource group.<br>Note: Azure Function Auth is configured by means of authorization keys.
 3. Create a storage account in your resource group.
 4. Create an Azure Redis cache in your resource group.
 5. Deploy the Dedicated Hosts Manager function in your resource group, and setup the below config.
