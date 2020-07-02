@@ -22,7 +22,8 @@ This library is packaged as an Azure Function that can be deployed in your subsc
 2. Deploy an Azure Function to your resource group.<br>Note: Azure Function Auth is configured by means of authorization keys.
 3. Create a storage account in your resource group.
 4. Create an Azure Redis cache in your resource group.
-5. Deploy the Dedicated Hosts Manager function in your resource group, and setup the below config.
+5. Set up Function App. Recommendation is to use App service plan as long running transaction like CreateVM might result in timeout.
+6. Deploy the Dedicated Hosts Manager function in your resource group, and setup the below config.
     _Application settings:_
     ```json
     {
@@ -163,15 +164,15 @@ Integrate the Dedicated Host Manager library/function to proxy create/delete VM 
     },
     {
         "name": "DhmCreateVmnUri",
-        "value": "<Create function URL with API key (from step 5 of 'Setup DedicatedHostManager')>",
+        "value": "<Create function URL with API key (from step 6 of 'Setup DedicatedHostManager')>",
     },
     {
         "name": "DhmDeleteVmnUri",
-        "value": "<Delete function URL with API key(from step 5 of 'Setup DedicatedHostManager')",
+        "value": "<Delete function URL with API key(from step 6 of 'Setup DedicatedHostManager')",
     },
     {
         "name": "PrepareDHGroupUri",
-        "value": "<PrepareDedicatedHostGroup function URL with API key (from step 5 if 'Setup DedicatedHostManager')",
+        "value": "<PrepareDedicatedHostGroup function URL with API key (from step 6 if 'Setup DedicatedHostManager')",
     }
     ```
 
